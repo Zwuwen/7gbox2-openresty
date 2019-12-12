@@ -30,7 +30,7 @@ local function create_rule(req_payload)
 
 		json_obj["RuleModule"] = g_rule_common.depend_rule_module(json_obj["DevType"])
 
-		local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(json_obj["RuleUuId"])
+		local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(json_obj["RuleUuid"])
 		if qerr then
 			ngx.log(ngx.ERR," ", qres,qerr)
 			return false
@@ -124,13 +124,13 @@ local function update_rule(req_payload)
 		json_obj = g_rule_common.http_str_trim(json_obj)
 
 		--更新策略
-		if json_obj["RuleUuId"] == nil then
+		if json_obj["RuleUuid"] == nil then
 			ngx.log(ngx.ERR,"please input rule uuid")
 			return false
 		end
 		json_obj["RuleModule"] = g_rule_common.depend_rule_module(json_obj["DevType"])
 
-		local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(json_obj["RuleUuId"])
+		local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(json_obj["RuleUuid"])
 		if qerr then
 			ngx.log(ngx.ERR," ", qres,qerr)
 			return false
@@ -141,7 +141,7 @@ local function update_rule(req_payload)
 			return false
 		else
 			ngx.log(ngx.INFO,"update rule")
-			local res,err = g_sql_app.update_rule_tbl(json_obj["RuleUuId"],json_obj)
+			local res,err = g_sql_app.update_rule_tbl(json_obj["RuleUuid"],json_obj)
 			if err then
 				ngx.log(ngx.ERR," ", res,err)
 				return false
@@ -163,7 +163,7 @@ end
 local function change_attr_name(src_obj)
 	local dst_obj = {}
 
-	dst_obj["RuleUuId"]  = src_obj["rule_uuid"]
+	dst_obj["RuleUuid"]  = src_obj["rule_uuid"]
 	dst_obj["DevType"]   = src_obj["dev_type"]
 	dst_obj["DevId"]	 = src_obj["dev_id"]
 	dst_obj["ChannelId"] = src_obj["dev_channel"]
