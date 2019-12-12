@@ -343,33 +343,32 @@ function g_orm_info_M.insert_rule_tbl(json)
 	if 	json["RuleUuid"]==nil or
 		json["DevType"]==nil or  
 	  	json["DevId"]==nil or								  
-		json["ChannelId"]==nil or
+		json["DevChannel"]==nil or
 		json["Method"]==nil or
 		json["Priority"]==nil or
-		json["RuleModule"]==nil or
 		json["RuleParam"]==nil or
 		json["StartTime"]==nil or
 		json["EndTime"]==nil or
 		json["StartDate"]==nil or
 		json["EndDate"]==nil
 		then
-			return "param error", false
+			ngx.log(ngx.ERR,"input param incomplete")
+			return nil,"input param incomplete"
 		end
 	local paraStr = cjson.encode(json["RuleParam"]);
-	local value_str = string.format("(\'%s\',\'%s\',%d,%d,\'%s\',%d,\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')",
+	local value_str = string.format("(\'%s\',\'%s\',%d,%d,\'%s\',%d,\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')",
 									  json["RuleUuid"],
 									  json["DevType"],  
 					  				  json["DevId"],								  
-									  json["ChannelId"],
+									  json["DevChannel"],
 									  json["Method"],
 									  json["Priority"],
-									  json["RuleModule"],
 									  paraStr,
 									  json["StartTime"],
 									  json["EndTime"],
 									  json["StartDate"],
 									  json["EndDate"])
-	local res,err = db:execute("insert into run_rule_tbl (rule_uuid,dev_type,dev_id,dev_channel,method,priority,rule_module,rule_param,start_time,end_time,start_date,end_date) values "..value_str)
+	local res,err = db:execute("insert into run_rule_tbl (rule_uuid,dev_type,dev_id,dev_channel,method,priority,rule_param,start_time,end_time,start_date,end_date) values "..value_str)
 	return res,err
 end
 
@@ -408,8 +407,8 @@ function g_orm_info_M.update_rule_tbl(rule_uuid, json)
 		sql_str = string.format( "%s dev_id=%d,", sql_str, json["DevId"])
 	end
 
-	if json["ChannelId"] ~= nil then
-		sql_str = string.format( "%s dev_channel=%d,", sql_str, json["ChannelId"])
+	if json["DevChannel"] ~= nil then
+		sql_str = string.format( "%s dev_channel=%d,", sql_str, json["DevChannel"])
 	end
 
 	if json["Method"] ~= nil then
@@ -418,10 +417,6 @@ function g_orm_info_M.update_rule_tbl(rule_uuid, json)
 
 	if json["Priority"] ~= nil then
 		sql_str = string.format( "%s priority=%d,", sql_str, json["Priority"])
-	end
-
-	if json["RuleModule"] ~= nil then
-		sql_str = string.format( "%s rule_module=\'%s\',", sql_str, json["RuleModule"])
 	end
 
 	if json["RuleParam"] ~= nil then
@@ -512,7 +507,7 @@ end
 
 --策略执行  获取最优策略
 function g_orm_info_M.query_rule_tbl_by_method(dev_type, dev_id, channel, method)
-	local sql_str = string.format("select * from (select * from run_rule_tbl where (trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d and trim(method)=\'%s\' and start_date<=current_date and current_date<=end_date))  as result_date where ((start_time<=current_time and current_time<end_time) or (start_time>=end_time and ((start_time<=current_time and current_time<='24:00:00') or ('00:00:00'<=current_time and current_time<end_time)))) order by priority ASC,start_time DESC,id ASC limit 1", dev_type, dev_id, channel, method)
+	local sql_str = string.format("select * from (select * from run_rule_tbl where (trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d and trim(method)=\'%s\' and start_date<=current_date and current_date<=end_date))  as result_date where ((start_time<=current_time and current_time<end_time) or (start_time>=end_time and ((start_time<=current_time and current_time<'24:00:00' and current_date!=end_date) or ('00:00:00'<=current_time and current_time<end_time and current_date!=start_date)))) order by priority ASC,start_time DESC,id ASC limit 1", dev_type, dev_id, channel, method)
 	--ngx.log(ngx.ERR," ",sql_str)
 	local res,err = db:query(sql_str)
 	return res,err

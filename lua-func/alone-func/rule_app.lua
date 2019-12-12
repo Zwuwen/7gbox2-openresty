@@ -14,69 +14,206 @@ local cjson = require("cjson")
 local g_exec_rule = require("alone-func.exec_rule")
 local g_cmd_sync = require("alone-func.cmd_sync")
 local g_rule_timer = require("alone-func.rule_timer")
-local g_report_event = require("alone-func.report_event")
+local g_report_event = require("alone-func.rule_report_event")
 local g_linkage_sync = require("alone-func.linkage_sync")
 local g_cmd_micro = require("cmd-func.cmd_micro")
 
 --function define
+local function is_key_exist(key)
+	if key == "RuleUuid" then
+	elseif key == "DevType" then
+	elseif key == "DevId" then
+	elseif key == "DevChannel" then
+	elseif key == "Method" then
+	elseif key == "Priority" then
+	elseif key == "RuleParam" then
+	elseif key == "StartTime" then
+	elseif key == "EndTime" then
+	elseif key == "StartDate" then
+	elseif key == "EndDate" then
+	else
+		return false
+	end
+
+	return true
+end
+
+local function check_rule_input(table)
+	if table["RuleUuid"] ~= nil then
+		if type(table["RuleUuid"]) ~= "string" then
+			ngx.log(ngx.ERR,"RuleUuid type err")
+			return "RuleUuid type err", false
+		end
+	end
+
+	if table["DevType"] ~= nil then
+		if type(table["DevType"]) ~= "string" then
+			ngx.log(ngx.ERR,"DevType type err")
+			return "DevType type err", false
+		end
+	end
+
+	if table["DevId"] ~= nil then
+		if type(table["DevId"]) ~= "number" then
+			ngx.log(ngx.ERR,"DevId type err")
+			return "DevId type err", false
+		end
+
+		if table["DevId"] <= 0 then
+			return "DevId <= 0", false
+		end
+	end
+
+	if table["DevChannel"] ~= nil then
+		if type(table["DevChannel"]) ~= "number" then
+			ngx.log(ngx.ERR,"DevChannel type err")
+			return "DevChannel type err", false
+		end
+
+		if table["DevChannel"] <= 0 then
+			return "DevChannel <= 0", false
+		end
+	end
+
+	if table["Method"] ~= nil then
+		if type(table["Method"]) ~= "string" then
+			ngx.log(ngx.ERR,"Method type err")
+			return "Method type err", false
+		end
+	end
+
+	if table["Priority"] ~= nil then
+		if type(table["Priority"]) ~= "number" then
+			ngx.log(ngx.ERR,"Priority type err")
+			return "Priority type err", false
+		end
+
+		if table["Priority"] < 0 then
+			return "Priority < 0", false
+		end
+	end
+
+	if table["RuleParam"] ~= nil then
+		if type(table["RuleParam"]) ~= "table" then
+			ngx.log(ngx.ERR,"RuleParam type err")
+			return "RuleParam type err", false
+		end
+	end
+
+	if table["StartTime"] ~= nil then
+		if type(table["StartTime"]) ~= "string" then
+			ngx.log(ngx.ERR,"StartTime type err")
+			return "StartTime type err", false
+		end
+	end
+
+	if table["EndTime"] ~= nil then
+		if type(table["EndTime"]) ~= "string" then
+			ngx.log(ngx.ERR,"EndTime type err")
+			return "EndTime type err", false
+		end
+	end
+
+	if table["StartDate"] ~= nil then
+		if type(table["StartDate"]) ~= "string" then
+			ngx.log(ngx.ERR,"StartDate type err")
+			return "StartDate type err", false
+		end
+	end
+
+	if table["EndDate"] ~= nil then
+		if type(table["EndDate"]) ~= "string" then
+			ngx.log(ngx.ERR,"EndDate type err")
+			return "EndDate type err", false
+		end
+	end
+
+	return "", true
+end
+
 --POST 插入策略
 local function create_rule(req_payload)
 	local json_param = cjson.decode(req_payload)
 
 	--插入
 	for i,json_obj in ipairs(json_param["Rules"]) do
+		local res,err = check_rule_input(json_obj)
+		if err == false then
+			ngx.log(ngx.ERR," ", res)
+			return res, false
+		end
+
 		--去除空格
 		json_obj = g_rule_common.http_str_trim(json_obj)
-
-		json_obj["RuleModule"] = g_rule_common.depend_rule_module(json_obj["DevType"])
 
 		local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(json_obj["RuleUuid"])
 		if qerr then
 			ngx.log(ngx.ERR," ", qres,qerr)
-			return false
+			return qerr, false
 		end
 		if next(qres) == nil then
-			ngx.log(ngx.INFO,"insert rule")
+			ngx.log(ngx.INFO,"insert rule: ", json_obj["RuleUuid"])
 			local res,err = g_sql_app.insert_rule_tbl(json_obj)
 			if err then
 				ngx.log(ngx.ERR," ", res,err)
-				return false
+				return err, false
 			end
 		else
 			ngx.log(ngx.INFO,"rule exist")
-			return false
+			return "rule exist", false
 		end
 
 		--执行一次该方法的策略
-		g_exec_rule.exec_rules_by_method(json_obj["DevType"], json_obj["DevId"], json_obj["ChannelId"], json_obj["Method"])
+		g_exec_rule.exec_rules_by_method(json_obj["DevType"], json_obj["DevId"], json_obj["DevChannel"], json_obj["Method"])
 
 		--更新定时任务间隔
 		g_rule_timer.refresh_rule_timer()
 	end
 	
-	return true
+	return "", true
 end
 
 --DELETE 删除策略
 local function delete_rule(req_payload)
 	local json_param = cjson.decode(req_payload)
-	
-	if json_param["Method"] == 'DelByRuleUuid' then
-		for i,uuid in ipairs(json_param["Payload"]["Rules"]) do
+
+	local method = json_param["Method"]
+	local payload = json_param["Payload"]
+
+	if (method == nil) then
+		ngx.log(ngx.ERR,"Method key err")
+		return "Method key err", false
+	end
+	if (payload == nil) then
+		ngx.log(ngx.ERR,"Payload key err")
+		return "Payload key err", false
+	end
+
+	if method == 'DelByRuleUuid' then
+		if (payload["Rules"] == nil) then
+			ngx.log(ngx.ERR,"Rules key err")
+			return "Rules key err", false
+		end
+		for i,uuid in ipairs(payload["Rules"]) do
+			if type(uuid) ~= "string" then
+				ngx.log(ngx.ERR,"RuleUuid type err")
+				return "RuleUuid type err", false
+			end
+
 			--删除策略
 			local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(uuid)
 			if qerr then
 				ngx.log(ngx.ERR," ", qres,qerr)
-				return false
+				return qerr, false
 			end
 			if next(qres) == nil then
 				ngx.log(ngx.INFO,"rule not exist")
 			else
-				ngx.log(ngx.INFO,"delete rule")
+				ngx.log(ngx.INFO,"delete rule: ", uuid)
 				local res,err = g_sql_app.delete_rule_tbl_by_uuid(uuid)
 				if err then
 					ngx.log(ngx.ERR," ", res,err)
-					return false
+					return err, false
 				end
 
 				--执行一次该方法的策略
@@ -87,21 +224,36 @@ local function delete_rule(req_payload)
 				g_rule_timer.refresh_rule_timer()
 			end
 		end
-	elseif json_param["Method"] == 'DelByDevId' then
-		local qres,qerr = g_sql_app.query_rule_tbl_by_devid(json_param["Payload"]["DevType"], json_param["Payload"]["DevId"])
+	elseif method == 'DelByDevId' then
+		if (payload["DevType"] == nil) then
+			ngx.log(ngx.ERR,"DevType key err")
+			return "DevType key err", false
+		end
+		if (payload["DevId"] == nil) then
+			ngx.log(ngx.ERR,"DevId key err")
+			return "DevId key err", false
+		end
+
+		local res,err = check_rule_input(payload)
+		if err == false then
+			ngx.log(ngx.ERR," ", res)
+			return res, false
+		end
+
+		local qres,qerr = g_sql_app.query_rule_tbl_by_devid(payload["DevType"], payload["DevId"])
 		if qerr then
 			ngx.log(ngx.ERR," ", qres,qerr)
-			return false
+			return qerr, false
 		end
 		if next(qres) == nil
 		then
 			ngx.log(ngx.INFO,"rule not exist")
 		else
-			ngx.log(ngx.INFO,"delete rule")
-			local res,err = g_sql_app.delete_rule_tbl_by_dev_id(json_param["Payload"]["DevType"], json_param["Payload"]["DevId"])
+			ngx.log(ngx.INFO,"delete rule: ", payload["DevType"]..", "..payload["DevId"])
+			local res,err = g_sql_app.delete_rule_tbl_by_dev_id(payload["DevType"], payload["DevId"])
 			if err then
 				ngx.log(ngx.ERR," ", res,err)
-				return false
+				return err, false
 			end
 		end		
 
@@ -109,10 +261,10 @@ local function delete_rule(req_payload)
 		g_rule_timer.refresh_rule_timer()
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
-		return false
+		return "delete rules, method error", false
 	end
 	
-	return true
+	return "", true
 end
 
 --PUT 更新策略
@@ -120,31 +272,44 @@ local function update_rule(req_payload)
 	local json_param = cjson.decode(req_payload)
 
 	for i,json_obj in ipairs(json_param["Rules"]) do
+		if json_obj["RuleUuid"] == nil then
+			ngx.log(ngx.ERR,"please input rule uuid")
+			return "please input rule uuid", false
+		end
+
+		for key,value in pairs(json_obj) do
+			local rt = is_key_exist(key)
+			if rt == false then
+				ngx.log(ngx.ERR,key.." error")
+				return key.." error", false
+			end
+		end
+
+		local res,err = check_rule_input(json_obj)
+		if err == false then
+			ngx.log(ngx.ERR," ", res)
+			return res, false
+		end
+
 		--去除空格
 		json_obj = g_rule_common.http_str_trim(json_obj)
 
 		--更新策略
-		if json_obj["RuleUuid"] == nil then
-			ngx.log(ngx.ERR,"please input rule uuid")
-			return false
-		end
-		json_obj["RuleModule"] = g_rule_common.depend_rule_module(json_obj["DevType"])
-
 		local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(json_obj["RuleUuid"])
 		if qerr then
 			ngx.log(ngx.ERR," ", qres,qerr)
-			return false
+			return qerr, false
 		end
 		if next(qres) == nil
 		then
-			ngx.log(ngx.INFO,"has no rule")
-			return false
+			ngx.log(ngx.INFO,"rule not exist")
+			return "rule not exist", false
 		else
-			ngx.log(ngx.INFO,"update rule")
+			ngx.log(ngx.INFO,"update rule: ", json_obj["RuleUuid"])
 			local res,err = g_sql_app.update_rule_tbl(json_obj["RuleUuid"],json_obj)
 			if err then
 				ngx.log(ngx.ERR," ", res,err)
-				return false
+				return err, false
 			end
 		end
 
@@ -156,30 +321,7 @@ local function update_rule(req_payload)
 		g_rule_timer.refresh_rule_timer()
 	end
 	
-	return true
-end
-
---转换数据库字段名
-local function change_attr_name(src_obj)
-	local dst_obj = {}
-
-	dst_obj["RuleUuid"]  = src_obj["rule_uuid"]
-	dst_obj["DevType"]   = src_obj["dev_type"]
-	dst_obj["DevId"]	 = src_obj["dev_id"]
-	dst_obj["ChannelId"] = src_obj["dev_channel"]
-	dst_obj["Method"]    = src_obj["method"]
-	dst_obj["Priority"]  = src_obj["priority"]
-
-	dst_obj["RuleParam"] = src_obj["rule_param"]
-	dst_obj["StartTime"] = src_obj["start_time"]
-	dst_obj["EndTime"]   = src_obj["end_time"]
-	dst_obj["StartDate"] = src_obj["start_date"]
-	dst_obj["EndDate"]   = src_obj["end_date"]
-	dst_obj["Running"]   = src_obj["running"]
-
-	dst_obj["RuleParam"] = cjson.decode(dst_obj["RuleParam"])
-	
-	return dst_obj
+	return "", true
 end
 
 --GET 查询策略
@@ -189,32 +331,35 @@ local function select_rule(req_payload)
 	local f_rule_array = {}
 	local f_json_param = {}
 
-	if req_payload == nil then
+	f_json_param = cjson.decode(req_payload)
+
+	if f_json_param["AllRules"] ~= nil then
 		--body为空：获取全部策略
 		local all_table,err = g_sql_app.query_rule_tbl_all()
-		
 		if err then
 			ngx.log(ngx.ERR," ", err)
-			return false, {}
+			return err, false
 		end
 		if next(all_table) == nil then
 			--数据库为空
 		else
 			for i,w in ipairs(all_table) do
-				f_rule_array[i] = change_attr_name(w)
+				f_rule_array[i] = g_rule_common.db_attr_to_display(w)
 			end
 		end
-	else
-		f_json_param = cjson.decode(req_payload)
-	end
-
-	if f_json_param["Rules"] ~= nil then
+	elseif f_json_param["Rules"] ~= nil then
+		--uuid
 		for i,uuid in ipairs(f_json_param["Rules"]) do
+			if type(uuid) ~= "string" then
+				ngx.log(ngx.ERR,"RuleUuid type err")
+				return "RuleUuid type err", false
+			end
+
 			local uuid_table,err = g_sql_app.query_rule_tbl_by_uuid(uuid)
 
 			if err then
 				ngx.log(ngx.ERR," ", err)
-				return false, {}
+				return err, false
 			end
 			if next(uuid_table) == nil then
 				--无所选策略
@@ -223,31 +368,50 @@ local function select_rule(req_payload)
 				for j,w in ipairs(uuid_table) do
 					uuid_obj = w
 				end
-				f_rule_array[i] = change_attr_name(uuid_obj)
+				f_rule_array[i] = g_rule_common.db_attr_to_display(uuid_obj)
 			end
 		end
 	elseif f_json_param["Devices"] ~= nil then
+		--dev
 		for i,dev in ipairs(f_json_param["Devices"]) do
+			if (dev["DevType"] == nil) then
+				ngx.log(ngx.ERR,"DevType key err")
+				return "DevType key err", false
+			end
+			if (dev["DevId"] == nil) then
+				ngx.log(ngx.ERR,"DevId key err")
+				return "DevId key err", false
+			end
+
+			local res,err = check_rule_input(dev)
+			if err == false then
+				ngx.log(ngx.ERR," ", res)
+				return res, false
+			end
+
 			local dev_table,err = g_sql_app.query_rule_tbl_by_devid(dev["DevType"], dev["DevId"])
 
 			if err then
 				ngx.log(ngx.ERR," ", err)
-				return false, {}
+				return err, false
 			end
 			if next(dev_table) == nil then
 				--无所选策略
 			else
 				local dev_obj = {}
 				for j,w in ipairs(dev_table) do
-					dev_obj[j] = change_attr_name(w)
+					dev_obj[j] = g_rule_common.db_attr_to_display(w)
 				end
 				f_rule_array[i] = dev_obj
 			end	
 		end
+	else
+		ngx.log(ngx.ERR,"query method err")
+		return "query method err", false
 	end
 
 	ngx.log(ngx.ERR,"query payload: ", cjson.encode(f_rule_array))
-	return true,f_rule_array
+	return f_rule_array, true
 end
 
 --生成请求的响应数据
@@ -300,9 +464,17 @@ local function encode_select_response(errcode, msg, data_table)
 	local f_table = {}
 	local f_str = ''
 	
-	--f_table["errcode"] = errcode
-	--f_table["msg"] = msg
-	f_table["Rules"] = data_table
+	if errcode == 0 then
+		--查询成功
+		f_table["Rules"] = data_table
+	else
+		--查询失败
+		local payload = {}
+		payload["Result"] = errcode
+		payload["Descrip"] = msg
+		payload["Out"] = data_table
+		f_table["Payload"] = payload
+	end
 	
 	f_str = cjson.encode(f_table)
 	--ngx.log(ngx.ERR," ", f_str)
@@ -336,9 +508,43 @@ end
 ngx.req.read_body()
 local request_body = ngx.req.get_body_data()
 
-local check_json = cjson.decode(request_body)
+local check_json = {}
+if pcall(cjson.decode, request_body) then
+	-- 没有错误
+	check_json = cjson.decode(request_body)
+else
+	-- 错误
+	ngx.log(ngx.ERR,"json format error")
+	local json_str = '{\n\"errcode\":400,\n \"msg\":\"json format error\",\n\"payload\":{}\n}'
+	ngx.say(json_str)
+	return
+end
 
+if check_json["Token"] ~= nil then
+	if type(check_json["Token"]) ~= "string" then
+		ngx.log(ngx.ERR,"Token type err")
+		local json_str = '{\n\"errcode\":400,\n \"msg\":\"Token type err\",\n\"payload\":{}\n}'
+		ngx.say(json_str)
+		return
+	end
+end
+
+if check_json["MsgId"] ~= nil then
+	if type(check_json["MsgId"]) ~= "string" then
+		ngx.log(ngx.ERR,"MsgId type err")
+		local json_str = '{\n\"errcode\":400,\n \"msg\":\"MsgId type err\",\n\"payload\":{}\n}'
+		ngx.say(json_str)
+		return
+	end
+end
 local msg_id = check_json["MsgId"]
+
+if type(check_json["RuleType"]) ~= "string" then
+	ngx.log(ngx.ERR,"RuleType type err")
+	local json_str = '{\n\"errcode\":400,\n \"msg\":\"RuleType type err\",\n\"payload\":{}\n}'
+	ngx.say(json_str)
+	return
+end
 if check_json["RuleType"] ~= "TimerRule" and check_json["RuleType"] ~= "LinkageRule" then
 	ngx.log(ngx.ERR,"rule type error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"rule type error\",\n\"payload\":{}\n}'
@@ -353,7 +559,7 @@ if request_method == "GET" then
 	local data_table = {}
 	local data_str = ""
 	if check_json["RuleType"] == "TimerRule" then
-		result,data_table = select_rule(request_body)
+		data_table, result = select_rule(request_body)
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
 		ngx.say(data_str)
@@ -372,7 +578,7 @@ elseif request_method == "POST" then
 	local data_table = {}
 	local data_str = ""
 	if check_json["RuleType"] == "TimerRule" then
-		result = create_rule(request_body)
+		data_table, result = create_rule(request_body)
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_post(linkage_ser,request_body)
 		ngx.say(data_str)
@@ -393,7 +599,7 @@ elseif request_method == "PUT" then
 	local data_table = {}
 	local data_str = ""
 	if check_json["RuleType"] == "TimerRule" then
-		result = update_rule(request_body)
+		data_table, result = update_rule(request_body)
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
 		ngx.say(data_str)
@@ -414,7 +620,7 @@ elseif request_method == "DELETE" then
 	local data_table = {}
 	local data_str = ""
 	if check_json["RuleType"] == "TimerRule" then
-		result = delete_rule(request_body)
+		data_table, result = delete_rule(request_body)
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
 		ngx.say(data_str)

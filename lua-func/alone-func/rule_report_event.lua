@@ -4,7 +4,6 @@ local m_report_event = {}
 local g_rule_common = require("alone-func.rule_common")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
-local g_event_conf = require("common.mydef.mydef_func")
 
 
 --function define
@@ -15,7 +14,7 @@ local function encode_rule_exec_report(msgid,errcode, desp, data_table)
 	
     f_table["Token"] = "7GBox"
     f_table["Event"] = "ResultUpload"
-    f_table["GW"] = ""
+    --f_table["GW"] = ""
     f_table["MsgId"] = msgid
     
     local payload = {}
@@ -25,7 +24,7 @@ local function encode_rule_exec_report(msgid,errcode, desp, data_table)
     f_table["Payload"] = payload
 	
 	f_str = cjson.encode(f_table)
-	ngx.log(ngx.ERR," ", f_str)
+	ngx.log(ngx.INFO," ", f_str)
 	return f_str
 end
 

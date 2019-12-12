@@ -13,22 +13,46 @@ local g_mydef = require("common.mydef.mydef_func")
 local g_http = require("common.http.myhttp_M")
 
 
+--转换数据库字段名
+function m_rule_common.db_attr_to_display(src_obj)
+	local dst_obj = {}
 
---生成rule_module字段值
-function m_rule_common.depend_rule_module(dev_type)
-	local rule_module
-	if dev_type == 'InfoScreen' then
-		rule_module = 'strategy.screen_strategy'
-	elseif dev_type == 'Led' then
-		rule_module = 'strategy.led_strategy'
-	elseif dev_type == 'Camera' then
-		rule_module = 'strategy.camera_strategy'
-    	else
-        	ngx.log(ngx.ERR,"module err")
-		rule_module = nil
-	end
+	dst_obj["RuleUuid"]  = src_obj["rule_uuid"]
+	dst_obj["DevType"]   = src_obj["dev_type"]
+	dst_obj["DevId"]	 = src_obj["dev_id"]
+	dst_obj["DevChannel"]= src_obj["dev_channel"]
+	dst_obj["Method"]    = src_obj["method"]
+	dst_obj["Priority"]  = src_obj["priority"]
 
-	return rule_module
+	dst_obj["RuleParam"] = src_obj["rule_param"]
+	dst_obj["StartTime"] = src_obj["start_time"]
+	dst_obj["EndTime"]   = src_obj["end_time"]
+	dst_obj["StartDate"] = src_obj["start_date"]
+    dst_obj["EndDate"]   = src_obj["end_date"]
+    dst_obj["LinkRunning"]= src_obj["linkage_running"]
+	dst_obj["Running"]   = src_obj["running"]
+
+	dst_obj["RuleParam"] = cjson.decode(dst_obj["RuleParam"])
+	
+	return dst_obj
+end
+
+--转换数据库字段名
+function m_rule_common.db_attr_to_cmd(src_obj)
+	local dst_obj = {}
+
+    math.randomseed(os.time())
+
+    dst_obj["Token"]     = "7GBox_rule"
+	dst_obj["MsgId"]	 = "rule-"..os.date("%y%m%d-%H%M%S")..tostring(math.random(10,99))
+	dst_obj["DevType"]   = src_obj["dev_type"]
+	dst_obj["DevId"]	 = src_obj["dev_id"]
+	dst_obj["DevChannel"]= src_obj["dev_channel"]
+	dst_obj["Method"]    = src_obj["method"]
+	dst_obj["In"] = src_obj["rule_param"]
+	dst_obj["In"] = cjson.decode(dst_obj["In"])
+	
+	return dst_obj
 end
 
 --去除从数据库查到字段的首尾空格
@@ -36,7 +60,6 @@ function m_rule_common.db_str_trim(rule_obj)
     rule_obj["rule_uuid"]  = string.gsub(rule_obj["rule_uuid"], "%s+", "")
     rule_obj["dev_type"]   = string.gsub(rule_obj["dev_type"], "%s+", "")
     rule_obj["method"]     = string.gsub(rule_obj["method"], "%s+", "")
-    rule_obj["rule_module"]= string.gsub(rule_obj["rule_module"], "%s+", "")
     
     return rule_obj
 end
@@ -51,9 +74,6 @@ function m_rule_common.http_str_trim(rule_obj)
     end
     if rule_obj["Method"] ~= nil then
         rule_obj["Method"]    = string.gsub(rule_obj["Method"], "%s+", "")
-    end
-    if rule_obj["RuleModule"] ~= nil then
-        rule_obj["RuleModule"]= string.gsub(rule_obj["RuleModule"], "%s+", "")
     end
 
     return rule_obj
@@ -135,7 +155,7 @@ function m_rule_common.get_next_loop_interval()
             interval = hours24 - time[1]["date_part"]
         else
             --日期内无策略
-            interval = 9
+            interval = 99999
         end
     end
 
@@ -144,8 +164,8 @@ end
 
 --发起http请求
 function m_rule_common.request_http(protocol,url,cmd_param)
-    ngx.log(ngx.INFO,"http_uri: ", url)
-    ngx.log(ngx.INFO,"http_body: ", cmd_param)
+    ngx.log(ngx.INFO,"rule http_uri: ", url)
+    ngx.log(ngx.INFO,"rule http_body: ", cmd_param)
 
     g_http.init()
     

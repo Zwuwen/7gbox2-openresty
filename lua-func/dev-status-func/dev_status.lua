@@ -23,8 +23,8 @@ function dev_status_M.set_ack_cmd_data(msg_id)
         local value_str = cjson.encode(json_body)
         local ok = g_redis.redis_set(key_str,value_str)
         ok = g_redis.redis_del(msg_id)
-        g_redis.close_db()
     end
+    g_redis.close_db()
 end
 
 function dev_status_M.get_real_cmd_data(key)

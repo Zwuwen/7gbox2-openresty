@@ -6,6 +6,7 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_exec_rule = require("alone-func.exec_rule")
+local g_rule_timer = require("alone-func.rule_timer")
 
 --function define
 --设置手动命令
@@ -16,10 +17,9 @@ local function set_cmd_to_rule(dev_type, dev_id, dev_channel, cmd_method)
     rule_table["RuleUuid"]  = uuid_str
     rule_table["DevType"]   = dev_type
     rule_table["DevId"]     = dev_id
-    rule_table["ChannelId"] = dev_channel
+    rule_table["DevChannel"]= dev_channel
     rule_table["Method"]    = cmd_method
     rule_table["Priority"]  = g_rule_common.cmd_priority
-    rule_table["RuleModule"]= g_rule_common.depend_rule_module(dev_type)
     rule_table["RuleParam"] = {}
     rule_table["StartTime"] = '00:00:00'
     rule_table["EndTime"]   = '24:00:00'

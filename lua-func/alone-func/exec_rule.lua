@@ -6,7 +6,8 @@ local g_rule_common = require("alone-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
-local g_screen_rule = require("alone-func.screen_rule")
+local g_micro = require("cmd-func.cmd_micro")
+local g_dev_status = require("dev-status-func.dev_status")
 
 --function define
 ---------------------策略自动执行-----------------------------------
@@ -17,7 +18,6 @@ local function dump_rule(rule_obj)
     ngx.log(ngx.INFO ,"dev_channel: ",rule_obj["dev_channel"])
     ngx.log(ngx.INFO ,"method     : ",rule_obj["method"])
     ngx.log(ngx.INFO ,"priority   : ",rule_obj["priority"])
-    ngx.log(ngx.INFO ,"rule_module: ",rule_obj["rule_module"])
     ngx.log(ngx.INFO ,"rule_param : ",rule_obj["rule_param"])
     ngx.log(ngx.INFO ,"start_time : ",rule_obj["start_time"])
     ngx.log(ngx.INFO ,"end_time   : ",rule_obj["end_time"])
@@ -30,7 +30,7 @@ end
 local function query_device_type()
     local dev_type_table,err = g_sql_app.query_rule_tbl_for_devtype()
     if err then
-        --ngx.log(ngx.ERR," ",dev_type_table.."  err msg: ",err)
+        ngx.log(ngx.ERR," ",dev_type_table.."  err msg: ",err)
         return {},0--for next(table)
     end
 
@@ -171,16 +171,9 @@ local function exec_http_request(rule_obj)
 
     local http_param_str = cjson.encode(http_param_table)
 
-    if rule_obj["rule_module"] == "strategy.screen_strategy" then
-        local err = g_screen_rule.screen_request_http(rule_obj["dev_type"], http_param_str)
-        if err == false then
-            ngx.log(ngx.ERR,"request http screen fail ")
-            --return false
-        end
-    elseif rule_obj["rule_module"] == "strategy.led_strategy" then
-        --todo
-    else
-        ngx.log(ngx.ERR,"rule module error ")
+    local res, err = g_micro.micro_post(rule_obj["dev_type"], http_param_str)
+    if err == false then
+        ngx.log(ngx.ERR,"http request micro service fail: ",res, err)
         return false
     end
 
@@ -221,6 +214,12 @@ local function exec_a_rule(rule_obj)
             ngx.log(ngx.ERR,"request http fail ")
             return false
         end
+
+        --执行的策略插入redis,cmd不插
+        local redis_table = g_rule_common.db_attr_to_cmd(rule_obj)
+        local redis_str = cjson.encode(redis_table)
+        ngx.log(ngx.INFO,"rule insert to redis: ", redis_str)
+        g_dev_status.set_temp_cmd_data(redis_str)
     end
     
     --update running
@@ -237,7 +236,7 @@ end
 function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
     local rt = check_linkage_running(dev_type, dev_id)
     if rt == false then
-        ngx.log(ngx.NOTICE,"linkage is running")
+        ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
         return false
     end
 
@@ -258,7 +257,7 @@ function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
         end
     else
         for i,rule in ipairs(ruletable) do
-            ngx.log(ngx.INFO,"exec rule: ", rule["rule_uuid"])
+            ngx.log(ngx.INFO,"exec time rule: uuid=", rule["rule_uuid"])
             --去除字符串首尾空格
             rule = g_rule_common.db_str_trim(rule)
 
@@ -306,7 +305,7 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
 
     --执行设备策略
     local dev_channel_array, dev_channel_cnt = query_device_channel(dev_type, dev_id)
-    ngx.log(ngx.INFO,"device channel cnt: ", dev_channel_cnt.." ".."device channel list :", cjson.encode(dev_channel_array))
+    --ngx.log(ngx.INFO,"device channel cnt: ", dev_channel_cnt.." ".."device channel list :", cjson.encode(dev_channel_array))
 
     if next(dev_channel_array) == nil
     then
@@ -315,7 +314,7 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     end
 
     for i=1,dev_channel_cnt do
-        ngx.log(ngx.INFO,"select method in channel: ",dev_channel_array[i])
+        --ngx.log(ngx.INFO,"select method in channel: ",dev_channel_array[i])
         m_exec_rule.exec_rules_by_channel(dev_type, dev_id, dev_channel_array[i])
     end
 end
@@ -323,7 +322,7 @@ end
 --执行某一类设备的策略
 function m_exec_rule.exec_rules_by_type(dev_type)
     local dev_id_array, dev_id_cnt = query_device_id(dev_type)
-    ngx.log(ngx.INFO,"device id cnt: ", dev_id_cnt.." ".."device id list :", cjson.encode(dev_id_array))
+    --ngx.log(ngx.INFO,"device id cnt: ", dev_id_cnt.." ".."device id list :", cjson.encode(dev_id_array))
 
     if next(dev_id_array) == nil
     then
@@ -340,7 +339,7 @@ end
 --执行所有类型设备的策略
 function m_exec_rule.exec_all_rules()
     local dev_type_array, dev_type_cnt = query_device_type()
-    ngx.log(ngx.INFO,"device type cnt: ", dev_type_cnt.." ".."device type list :", cjson.encode(dev_type_array))
+    --ngx.log(ngx.INFO,"device type cnt: ", dev_type_cnt.." ".."device type list :", cjson.encode(dev_type_array))
 
     if next(dev_type_array) == nil
     then
@@ -349,7 +348,7 @@ function m_exec_rule.exec_all_rules()
     end
 
     for i=1,dev_type_cnt do
-        ngx.log(ngx.INFO,"select device in type: ",dev_type_array[i])
+        --ngx.log(ngx.INFO,"select device in type: ",dev_type_array[i])
         m_exec_rule.exec_rules_by_type(dev_type_array[i])
     end
 end
