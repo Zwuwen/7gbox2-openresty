@@ -25,6 +25,9 @@ local function update_method()
 		g_cmd_sync.delete_cmd_from_ruletable(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],json_body["In"]["Method"])
 		local json_str = '{\n\"code\":200,\n \"msg\":\"sucess"\n\"payload\":{}\n}'
 		ngx.say(json_str)
+	elseif json_body["Method"] == "CancleLinkageRule" then
+		local res,status = g_micro.micro_delete("RuleEngine",request_body)
+		ngx.say(res)
 	else
 		--转发命令到微服务
 		local res,status = g_micro.micro_post(json_body["DevType"],request_body)
