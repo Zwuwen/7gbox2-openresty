@@ -32,13 +32,14 @@ function g_orm_info_M.open_db()
 end
 
 --close db
-function g_orm_info_M.close_db(db)
+function g_orm_info_M.close_db()
 	if db == nil then
 		ngx.log(ngx.ERR,"close db complete")
 		return
 	end
-	ngx.log(ngx.ERR,"close db sucess")
+	ngx.log(ngx.ERR,"###########close db sucess")
 	db:close()
+	db = nil
 end
 
 

@@ -7,13 +7,27 @@ local cjson = require("cjson")
 local g_dev_status = require("dev-status-func.dev_status")
 
 ----------获取微服务url地址------------
-function cmd_micro_M.get_mico_url(svr_type,suffix)
+local function get_url_suffix(request_body)
+    local body = cjson.decode(request_body)
+    if body["Event"] == "StatusUpload" then
+        return "event"
+    elseif body["RuleType"] == "LinkageRule" then
+        return "rule"
+    else
+        --设备微服务 命令存到redis,等待微服务执行结果确认
+		g_dev_status.set_temp_cmd_data(request_body)
+        return "ioctl"
+    end
+end
+
+function cmd_micro_M.get_mico_url(svr_type,request_body)
     local res, err = g_sql_app.query_micro_svr_tbl(svr_type)
     print("#######err: ",err)
     if res then
         for key, value in ipairs(res) do
             local url_prefix = string.gsub(value["url_prefix"], "%s+", "")
             local online = value["online"]
+            local suffix = get_url_suffix(request_body)
             if svr_type == "RuleEngine" then
                 local url = string.format('%s/%s',url_prefix,suffix)
                 return url,online
@@ -29,8 +43,8 @@ function cmd_micro_M.get_mico_url(svr_type,suffix)
 end
 
 ---------微服务调用----------------
-local function micro_cmd_exec(svr_type,request_body, method,suffix)
-    local url,online = cmd_micro_M.get_mico_url(svr_type,suffix)
+local function micro_cmd_exec(svr_type,request_body, method)
+    local url,online = cmd_micro_M.get_mico_url(svr_type,request_body)
     if  online == 1 then
         g_http.init()
         ngx.log(ngx.ERR,"##method: ",method)
@@ -53,40 +67,24 @@ local function micro_cmd_exec(svr_type,request_body, method,suffix)
     end
 end
 
-local function get_url_suffix(request_body)
-    local body = cjson.decode(request_body)
-    if body["Event"] == "StatusUpload" then
-        return "event"
-    elseif body["RuleType"] == "LinkageRule" then
-        return "rule"
-    else
-        --设备微服务 命令存到redis,等待微服务执行结果确认
-		g_dev_status.set_temp_cmd_data(request_body)
-        return "ioctl"
-    end
-end
 
 function cmd_micro_M.micro_post(svr_type,request_body)
-    local suffix = get_url_suffix(request_body)
-    local res,ok = micro_cmd_exec(svr_type,request_body, "POST",suffix)
+    local res,ok = micro_cmd_exec(svr_type,request_body, "POST")
     return res,ok
 end
 
 function cmd_micro_M.micro_get(svr_type,request_body)
-    local suffix = get_url_suffix(request_body)
-    local res,ok = micro_cmd_exec(svr_type,request_body, "GET",suffix)
+    local res,ok = micro_cmd_exec(svr_type,request_body, "GET")
     return res,ok
 end
 
 function cmd_micro_M.micro_delete(svr_type,request_body)
-    suffix = get_url_suffix(request_body)
-    local res,ok = micro_cmd_exec(svr_type,request_body, "DELETE",suffix)
+    local res,ok = micro_cmd_exec(svr_type,request_body, "DELETE")
     return res,ok
 end
 
 function cmd_micro_M.micro_put(svr_type,request_body)
-    local suffix = get_url_suffix(request_body)
-    local res,ok = micro_cmd_exec(svr_type,request_body, "PUT",suffix)
+    local res,ok = micro_cmd_exec(svr_type,request_body, "PUT")
     return res,ok
 end
 return cmd_micro_M
