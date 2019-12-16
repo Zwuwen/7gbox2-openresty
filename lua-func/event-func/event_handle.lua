@@ -7,6 +7,7 @@
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_event_report = require("event-func.event_report")
+local g_sql_app = require("common.sql.g_orm_info_M")
 
 
 ------------------------------------event handle function api-----------------------------------------
@@ -60,3 +61,4 @@ elseif request_method == "PUT" then
 elseif request_method == "DELETE" then
     delete_method()
 end
+g_sql_app.close_db()
