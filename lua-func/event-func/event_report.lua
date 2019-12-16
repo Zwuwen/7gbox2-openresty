@@ -229,5 +229,17 @@ function event_report_M.platform_online_event(body)
     end
 end
 
+function event_report_M.platform_heart_event()
+    local message = {}
+    message["Token"] = "7GBOX"
+    message["Event"] = "Heartbeat"
+    local res,err = g_sql_app.query_all_dev_info_tbl()
+    for key,device in pairs(res) do
+        if device.dev_id == 0 then
+            message["GW"] = device.sn
+            event_send_message(event_conf.url,cjson.encode(message))
+        end
+    end
+end
 return event_report_M
 
