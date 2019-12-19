@@ -22,7 +22,6 @@ function dev_status_M.set_ack_cmd_data(msg_id)
         local key_str = string.format("%s-%s-%s",json_body["DevId"],json_body["DevChannel"],json_body["Method"])
         local value_str = cjson.encode(json_body)
         local ok = g_redis.redis_set(key_str,value_str)
-        ok = g_redis.redis_del(msg_id)
     end
     g_redis.close_db()
 end
@@ -39,6 +38,12 @@ function dev_status_M.get_keys(pattery)
     local res = g_redis.redis_get_keys(pattery)
     g_redis.close_db()
     return res
+end
+
+function dev_status_M.del_control_method(msg_id)
+    g_redis.open_db()
+    local ok = g_redis.redis_del(msg_id)
+    g_redis.close_db()
 end
 
 return dev_status_M

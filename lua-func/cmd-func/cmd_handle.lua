@@ -23,19 +23,20 @@ local function update_method()
 	if json_body["Method"] == "ResetToAuto" then
 		--命令切换自动
 		g_cmd_sync.delete_cmd_from_ruletable(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],json_body["In"]["Method"])
-		local json_str = '{\n\"code\":200,\n \"msg\":\"sucess"\n\"payload\":{}\n}'
+		local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
 		ngx.say(json_str)
 	elseif json_body["Method"] == "CancleLinkageRule" then
 		local res,status = g_micro.micro_delete("RuleEngine",request_body)
 		ngx.say(res)
 	else
 		--转发命令到微服务
-		local res,status = g_micro.micro_post(json_body["DevType"],request_body)
-		if status == true then
-			--命令切换手动
-			g_cmd_sync.insert_cmd_to_ruletable(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],json_body["Method"])
+		if json_body["DevType"]~=nil and json_body["DevId"]~=nil and json_body["DevChannel"]~=nil and json_body["Method"]~=nil then
+			local res,status = g_micro.micro_post(json_body["DevType"],request_body)
+			ngx.say(res)
+		else
+			local json_str = '{\n\"Code\":400,\n \"Msg\":\"Parameter is err!"\n\"Payload\":{}\n}'
+			ngx.say(json_str)
 		end
-		ngx.say(res)
 	end
 end
 
