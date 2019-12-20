@@ -47,7 +47,16 @@ local function post_method()
     elseif body["Event"] == "PlatStatus" then
         --平台上线下线事件
         g_event_report.platform_online_event(body)
+    elseif body["Event"] == "AIAlarm" then
+        --AI事件
+        g_event_report.attribute_change(body)
+    else
+        local json_str = '{\n\"Code\":400,\n \"Msg\":\"NoneType event"\n\"Payload\":{}\n}'
+        ngx.say(json_str)
+        return
     end
+    local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
+	ngx.say(json_str)
 end
 
 -------main function------------

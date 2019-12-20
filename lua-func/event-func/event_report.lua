@@ -68,22 +68,28 @@ end
 -----------------------------属性改变事件-----------------------
 -----规则引擎触发
 local function rule_engine_trigger(body)
-    local devices = body["Devices"]
-    for key, value in pairs(devices) do
-        local request_body = {}
-        request_body["Event"] = "StatusUpload"
-        local rule_dev = {}
-        rule_dev["DevType"] = value["DevType"]
-        rule_dev["DevId"] = value["DevId"]
-        local channels = value["Channels"]
-        for key1, value1 in pairs(channels) do
-            rule_dev["DevChannel"] = value1["Id"]
-            rule_dev["Attributes"] =value1["Attributes"]
-            request_body["Device"] = rule_dev
-            local request_str = cjson.encode(request_body)
-            ngx.log(ngx.ERR,"rule_engine_trigger: ",cjson.encode(body))
-            local result,status = g_micro.micro_post("RuleEngine",request_str)
+    if body["Event"] == "StatusUpload" then
+        local devices = body["Devices"]
+        for key, value in pairs(devices) do
+            local request_body = {}
+            request_body["Event"] = "StatusUpload"
+            local rule_dev = {}
+            rule_dev["DevType"] = value["DevType"]
+            rule_dev["DevId"] = value["DevId"]
+            local channels = value["Channels"]
+            for key1, value1 in pairs(channels) do
+                rule_dev["DevChannel"] = value1["Id"]
+                rule_dev["Attributes"] =value1["Attributes"]
+                request_body["Device"] = rule_dev
+                local request_str = cjson.encode(request_body)
+                ngx.log(ngx.ERR,"rule_engine_trigger: ",cjson.encode(body))
+                local result,status = g_micro.micro_post("RuleEngine",request_str)
+            end
         end
+    elseif body["Event"] == "AIAlarm" then
+        local request_str = cjson.encode(body)
+        ngx.log(ngx.ERR,"rule_engine_trigger: ",cjson.encode(body))
+        local result,status = g_micro.micro_post("RuleEngine",request_str)
     end
 end
 

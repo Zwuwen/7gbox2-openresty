@@ -11,6 +11,8 @@ local function get_url_suffix(request_body)
     local body = cjson.decode(request_body)
     if body["Event"] == "StatusUpload" then
         return "event"
+    elseif body["Event"] == "AIAlarm" then
+        return "event"
     elseif body["Method"] == "CancleLinkageRule" then
         return "event"
     elseif body["RuleType"] == "LinkageRule" then
@@ -59,11 +61,11 @@ local function micro_cmd_exec(svr_type,request_body, method)
             return res,true
         else
             ngx.log(ngx.ERR, "micro_cmd_exec failed\n")
-            local json_str = '{\n\"errcode\":400,\n \"msg\":\"fail"\n\"payload\":{}\n}'
+            local json_str = '{\n\"Errcode\":400,\n \"Msg\":\"fail"\n\"Payload\":{}\n}'
             return json_str,false
         end
     else
-        local json_str = '{\n\"errcode\":400,\n \"msg\":\"server is offline"\n\"payload\":{}\n}'
+        local json_str = '{\n\"Errcode\":400,\n \"msg\":\"Server is offline"\n\"Payload\":{}\n}'
         ngx.log(ngx.ERR,"micro server is offline!")
         return json_str,false
     end
