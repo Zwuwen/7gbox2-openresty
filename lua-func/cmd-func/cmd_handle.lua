@@ -62,5 +62,5 @@ elseif request_method == "PUT" then
 elseif request_method == "DELETE" then
 	delete_method()
 end
-g_sql_app.close_db()
+
 
