@@ -487,7 +487,6 @@ local request_method = ngx.var.request_method
 if request_method ~= "GET" and request_method ~= "POST" and request_method ~= "DELETE" and request_method ~= "PUT" then
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"method no support\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
-	g_sql_app.close_db()
 	return
 end
 
@@ -496,14 +495,12 @@ local uri_sub = string.sub(uri,rule_pre_index,rule_post_index)
 if uri_sub ~= "/v0001/rule" then
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"uri prefix is error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
-	g_sql_app.close_db()
 	return
 end
 
 if #uri ~= uri_len then
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"uri len is error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
-	g_sql_app.close_db()
 	return
 end
 
@@ -520,7 +517,6 @@ else
 	ngx.log(ngx.ERR,"json format error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"json format error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
-	g_sql_app.close_db()
 	return
 end
 
@@ -529,7 +525,6 @@ if check_json["Token"] ~= nil then
 		ngx.log(ngx.ERR,"Token type err")
 		local json_str = '{\n\"errcode\":400,\n \"msg\":\"Token type err\",\n\"payload\":{}\n}'
 		ngx.say(json_str)
-		g_sql_app.close_db()
 		return
 	end
 end
@@ -539,7 +534,6 @@ if check_json["MsgId"] ~= nil then
 		ngx.log(ngx.ERR,"MsgId type err")
 		local json_str = '{\n\"errcode\":400,\n \"msg\":\"MsgId type err\",\n\"payload\":{}\n}'
 		ngx.say(json_str)
-		g_sql_app.close_db()
 		return
 	end
 end
@@ -549,14 +543,12 @@ if type(check_json["RuleType"]) ~= "string" then
 	ngx.log(ngx.ERR,"RuleType type err")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"RuleType type err\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
-	g_sql_app.close_db()
 	return
 end
 if check_json["RuleType"] ~= "TimerRule" and check_json["RuleType"] ~= "LinkageRule" then
 	ngx.log(ngx.ERR,"rule type error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"rule type error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
-	g_sql_app.close_db()
 	return
 end
 local linkage_ser = "RuleEngine"
@@ -571,7 +563,6 @@ if request_method == "GET" then
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
 		ngx.say(data_str)
-		g_sql_app.close_db()
 		return
 	end
 	
@@ -591,7 +582,6 @@ elseif request_method == "POST" then
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_post(linkage_ser,request_body)
 		ngx.say(data_str)
-		g_sql_app.close_db()
 		return
 	end
 
@@ -613,7 +603,6 @@ elseif request_method == "PUT" then
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
 		ngx.say(data_str)
-		g_sql_app.close_db()
 		return
 	end
 
@@ -635,7 +624,6 @@ elseif request_method == "DELETE" then
 	elseif check_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
 		ngx.say(data_str)
-		g_sql_app.close_db()
 		return
 	end
 
@@ -649,4 +637,3 @@ elseif request_method == "DELETE" then
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
 end
-g_sql_app.close_db()
