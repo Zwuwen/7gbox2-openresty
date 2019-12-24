@@ -8,6 +8,7 @@ local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_micro = require("cmd-func.cmd_micro")
 local g_dev_status = require("dev-status-func.dev_status")
+local g_linkage_sync = require("alone-func.linkage_sync")
 
 --function define
 ---------------------策略自动执行-----------------------------------
@@ -130,27 +131,13 @@ local function query_device_method(dev_type, dev_id, channel)
     return dev_method_array, dev_method_cnt
 end
 
---判断设备是否有联动在执行
-local function check_linkage_running(dev_type, dev_id)
-    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and linkage_running=1", dev_type, dev_id)
-    local rule_table,err = g_sql_app.query_table(sql_str)
-    if err then
-        ngx.log(ngx.ERR," ", err)
-        return false
-    end
-    if next(rule_table) ~= nil then
-        --这个设备正在执行联动，策略停止执行
-        ngx.log(ngx.ERR,"linkage is running")
-        return false  --有联动在执行
-    end
-    return true  --没有联动
-end
-
 --打包HTTP请求数据
 local function encode_http_downstream_param(rule_obj)
     local http_param_table = {}
+    math.randomseed(os.time())
 
     http_param_table["Token"]     = '7GBox_rule'
+    http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(10,99))
     http_param_table["DevType"]   = rule_obj["dev_type"]
     http_param_table["DevId"]     = rule_obj["dev_id"]
     http_param_table["DevChannel"]= rule_obj["dev_channel"]
@@ -215,11 +202,7 @@ local function exec_a_rule(rule_obj)
             return false
         end
 
-        --执行的策略插入redis,cmd不插
-        local redis_table = g_rule_common.db_attr_to_cmd(rule_obj)
-        local redis_str = cjson.encode(redis_table)
-        ngx.log(ngx.INFO,"rule insert to redis: ", redis_str)
-        g_dev_status.set_temp_cmd_data(redis_str)
+        --执行成功
     end
     
     --update running
@@ -234,7 +217,7 @@ end
 
 --执行设备某个channel某个method的策略
 function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
-    local rt = check_linkage_running(dev_type, dev_id)
+    local rt = g_linkage_sync.check_linkage_running(dev_type, dev_id)
     if rt == false then
         ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
         return false
@@ -297,7 +280,7 @@ end
 
 --执行某个设备的策略
 function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
-    local rt = check_linkage_running(dev_type, dev_id)
+    local rt = g_linkage_sync.check_linkage_running(dev_type, dev_id)
     if rt == false then
         ngx.log(ngx.NOTICE,"linkage is running")
         return

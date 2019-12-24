@@ -37,24 +37,6 @@ function m_rule_common.db_attr_to_display(src_obj)
 	return dst_obj
 end
 
---转换数据库字段名
-function m_rule_common.db_attr_to_cmd(src_obj)
-	local dst_obj = {}
-
-    math.randomseed(os.time())
-
-    dst_obj["Token"]     = "7GBox_rule"
-	dst_obj["MsgId"]	 = "rule-"..os.date("%y%m%d-%H%M%S")..tostring(math.random(10,99))
-	dst_obj["DevType"]   = src_obj["dev_type"]
-	dst_obj["DevId"]	 = src_obj["dev_id"]
-	dst_obj["DevChannel"]= src_obj["dev_channel"]
-	dst_obj["Method"]    = src_obj["method"]
-	dst_obj["In"] = src_obj["rule_param"]
-	dst_obj["In"] = cjson.decode(dst_obj["In"])
-	
-	return dst_obj
-end
-
 --去除从数据库查到字段的首尾空格
 function m_rule_common.db_str_trim(rule_obj)
     rule_obj["rule_uuid"]  = string.gsub(rule_obj["rule_uuid"], "%s+", "")
