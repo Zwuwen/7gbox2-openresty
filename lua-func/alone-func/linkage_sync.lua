@@ -7,22 +7,6 @@ local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_exec_rule = require("alone-func.exec_rule")
 
---判断设备是否有联动在执行
-function m_linkage_sync.check_linkage_running(dev_type, dev_id)
-    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and linkage_running=1", dev_type, dev_id)
-    local rule_table,err = g_sql_app.query_table(sql_str)
-    if err then
-        ngx.log(ngx.ERR," ", err)
-        return false
-    end
-    if next(rule_table) ~= nil then
-        --这个设备正在执行联动，策略停止执行
-        ngx.log(ngx.ERR,"linkage is running")
-        return false  --有联动在执行
-    end
-    return true  --没有联动
-end
-
 --更新linkage_running
 local function update_linkage_running(dev_type, dev_id, running)
     local sql_str = string.format("update run_rule_tbl set linkage_running=%d where dev_type=\'%s\' and dev_id=%d", running, dev_type, dev_id)
