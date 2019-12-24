@@ -333,21 +333,7 @@ local function select_rule(req_payload)
 
 	f_json_param = cjson.decode(req_payload)
 
-	if f_json_param["AllRules"] ~= nil then
-		--body为空：获取全部策略
-		local all_table,err = g_sql_app.query_rule_tbl_all()
-		if err then
-			ngx.log(ngx.ERR," ", err)
-			return err, false
-		end
-		if next(all_table) == nil then
-			--数据库为空
-		else
-			for i,w in ipairs(all_table) do
-				f_rule_array[i] = g_rule_common.db_attr_to_display(w)
-			end
-		end
-	elseif f_json_param["Rules"] ~= nil then
+	if f_json_param["Rules"] ~= nil then
 		--uuid
 		for i,uuid in ipairs(f_json_param["Rules"]) do
 			if type(uuid) ~= "string" then
@@ -406,8 +392,30 @@ local function select_rule(req_payload)
 			end	
 		end
 	else
-		ngx.log(ngx.ERR,"query method err")
-		return "query method err", false
+		f_json_param["RuleType"] = nil	--删除RuleType
+		for key, value in pairs(f_json_param) do
+			--ngx.log(ngx.INFO,key..": "..value)
+		end
+
+		if next(f_json_param) == nil then
+			--body为空：获取全部策略
+			ngx.log(ngx.INFO,"query all rule")
+			local all_table,err = g_sql_app.query_rule_tbl_all()
+			if err then
+				ngx.log(ngx.ERR," ", err)
+				return err, false
+			end
+			if next(all_table) == nil then
+				--数据库为空
+			else
+				for i,w in ipairs(all_table) do
+					f_rule_array[i] = g_rule_common.db_attr_to_display(w)
+				end
+			end
+		else
+			ngx.log(ngx.ERR,"query method err")
+			return "query method err", false
+		end
 	end
 
 	ngx.log(ngx.ERR,"query payload: ", cjson.encode(f_rule_array))
