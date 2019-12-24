@@ -9,6 +9,7 @@ local event_conf = require("conf.event_conf")
 local g_micro = require("cmd-func.cmd_micro")
 local g_dev_status = require("dev-status-func.dev_status")
 local g_cmd_sync = require("alone-func.cmd_sync")
+local g_exec_rule = require("alone-func.exec_rule")
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -39,6 +40,10 @@ function event_report_M.thing_online(devices)
     for key, value in pairs(devices) do
         local dev_id = value["DevId"]
         local dev_type = value["DevType"]
+        --执行该设备的时间策略
+        g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+
+        --上报属性
         local device_object = get_db_device_message(dev_id)
         local dev_dict = cjson.decode(device_object)
         dev_dict["DevType"] = dev_type
@@ -56,6 +61,12 @@ end
 function event_report_M.thing_offline(devices)
     local dev_list = {}
     for key, value in pairs(devices) do
+        local dev_id = value["DevId"]
+        local dev_type = value["DevType"]
+        --清除该设备时间策略运行状态
+        g_exec_rule.clear_device_running(dev_type, dev_id)
+
+        --上报属性
         local attributes = {}
         attributes["Online"] = 0
         value["Attributes"] = attributes

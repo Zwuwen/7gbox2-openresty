@@ -12,10 +12,10 @@ local g_rule_common = require("alone-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_exec_rule = require("alone-func.exec_rule")
-local g_cmd_sync = require("alone-func.cmd_sync")
+--local g_cmd_sync = require("alone-func.cmd_sync")
 local g_rule_timer = require("alone-func.rule_timer")
 local g_report_event = require("alone-func.rule_report_event")
-local g_linkage_sync = require("alone-func.linkage_sync")
+--local g_linkage_sync = require("alone-func.linkage_sync")
 local g_cmd_micro = require("cmd-func.cmd_micro")
 
 --function define

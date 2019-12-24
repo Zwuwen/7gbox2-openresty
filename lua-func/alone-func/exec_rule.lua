@@ -182,6 +182,32 @@ local function exec_http_request(rule_obj)
     return true
 end
 
+function m_exec_rule.clear_device_running(dev_type, dev_id)
+    local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
+    
+    local res, err = g_sql_app.exec_sql(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res, err)
+        return false
+    end    
+end
+
+--更新设备关闭时所有策略的运行状态
+local function update_set_off_status(rule_obj)
+    if rule_obj["method"] == "SetOnOff" then
+        local param = cjson.decode(rule_obj["rule_param"])
+        if param["OnOff"] == g_rule_common.set_off then
+            ngx.log(ngx.INFO,"update turn off dev: ", rule_obj["dev_type"].." "..rule_obj["dev_id"])
+            m_exec_rule.clear_device_running(rule_obj["dev_type"], rule_obj["dev_id"])
+        else
+            --开启
+        end
+    else
+        --其他方法，不需要更新
+    end
+    return true
+end
+
 --更新策略运行状态
 local function update_rule_run_status(rule_obj)
     --清除该method所有策略的running为0
@@ -221,6 +247,11 @@ local function exec_a_rule(rule_obj)
     end
     
     --update running
+    local err = update_set_off_status(rule_obj)
+    if err == false then
+        ngx.log(ngx.ERR,"update set off running fail ")
+        return false
+    end
     local err = update_rule_run_status(rule_obj)
     if err == false then
         ngx.log(ngx.ERR,"update rules running fail ")

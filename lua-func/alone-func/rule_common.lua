@@ -4,6 +4,8 @@ local m_rule_common = {}
 m_rule_common.cmd_priority = 1
 --24h的秒数 24*3600
 local hours24 = 86400
+--关闭设备
+m_rule_common.set_off = 0
 
 
 --load module
