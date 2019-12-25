@@ -6,8 +6,6 @@ local g_rule_common = require("alone-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
-local g_micro = require("cmd-func.cmd_micro")
-local g_dev_status = require("dev-status-func.dev_status")
 
 --function define
 ---------------------策略自动执行-----------------------------------
@@ -146,42 +144,6 @@ local function check_linkage_running(dev_type, dev_id)
     return true  --没有联动
 end
 
---打包HTTP请求数据
-local function encode_http_downstream_param(rule_obj)
-    local http_param_table = {}
-    math.randomseed(os.time())
-
-    http_param_table["Token"]     = '7GBox_rule'
-    http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(10,99))
-    http_param_table["DevType"]   = rule_obj["dev_type"]
-    http_param_table["DevId"]     = rule_obj["dev_id"]
-    http_param_table["DevChannel"]= rule_obj["dev_channel"]
-    http_param_table["Method"]    = rule_obj["method"]
-    local in_obj                  = cjson.decode(rule_obj["rule_param"])
-    http_param_table["In"]        = in_obj
-
-    return http_param_table
-end
-
---给微服务发送HTTP请求
-local function exec_http_request(rule_obj)
-    local http_param_table = encode_http_downstream_param(rule_obj)
-    if next(http_param_table["In"]) == nil then
-        ngx.log(ngx.ERR,"rule param error ")
-        return false
-    end
-
-    local http_param_str = cjson.encode(http_param_table)
-
-    local res, err = g_micro.micro_post(rule_obj["dev_type"], http_param_str)
-    if err == false then
-        ngx.log(ngx.ERR,"http request micro service fail: ",res, err)
-        return false
-    end
-
-    return true
-end
-
 function m_exec_rule.clear_device_running(dev_type, dev_id)
     local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
     
@@ -189,7 +151,8 @@ function m_exec_rule.clear_device_running(dev_type, dev_id)
     if err then
         ngx.log(ngx.ERR," ", res, err)
         return false
-    end    
+    end
+    return true
 end
 
 --更新设备关闭时所有策略的运行状态
@@ -198,7 +161,11 @@ local function update_set_off_status(rule_obj)
         local param = cjson.decode(rule_obj["rule_param"])
         if param["OnOff"] == g_rule_common.set_off then
             ngx.log(ngx.INFO,"update turn off dev: ", rule_obj["dev_type"].." "..rule_obj["dev_id"])
-            m_exec_rule.clear_device_running(rule_obj["dev_type"], rule_obj["dev_id"])
+            local err = m_exec_rule.clear_device_running(rule_obj["dev_type"], rule_obj["dev_id"])
+            if err == false then
+                ngx.log(ngx.ERR,"update turn off dev fail ")
+                return false
+            end
         else
             --开启
         end
@@ -237,7 +204,7 @@ local function exec_a_rule(rule_obj)
         ngx.log(ngx.NOTICE  ,"cmd running, ignore rule! ")
     else
         --执行rule
-        local err = exec_http_request(rule_obj)
+        local err = g_rule_common.exec_http_request(rule_obj)
         if err == false then
             ngx.log(ngx.ERR,"request http fail ")
             return false

@@ -88,8 +88,8 @@ local function check_rule_input(table)
 			return "Priority type err", false
 		end
 
-		if table["Priority"] < 0 then
-			return "Priority < 0", false
+		if table["Priority"] <= 0 then
+			return "Priority <= 0", false
 		end
 	end
 
@@ -141,6 +141,13 @@ local function create_rule(req_payload)
 		if err == false then
 			ngx.log(ngx.ERR," ", res)
 			return res, false
+		end
+
+		if (json_obj["Priority"] < g_rule_common.time_priority_h or 
+		   	json_obj["Priority"] > g_rule_common.time_priority_l)
+		then
+			ngx.log(ngx.ERR,"time rule priority is 8~13")
+			return "time rule priority should is 8~13", false
 		end
 
 		--去除空格

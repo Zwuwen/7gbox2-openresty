@@ -2,6 +2,9 @@ local m_rule_common = {}
 
 --手动命令的优先级定义
 m_rule_common.cmd_priority = 1
+--时间策略最大优先级定义
+m_rule_common.time_priority_h = 8
+m_rule_common.time_priority_l = 13
 --24h的秒数 24*3600
 local hours24 = 86400
 --关闭设备
@@ -13,6 +16,7 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_http = require("common.http.myhttp_M")
+local g_micro = require("cmd-func.cmd_micro")
 
 
 --转换数据库字段名
@@ -63,6 +67,9 @@ function m_rule_common.http_str_trim(rule_obj)
     return rule_obj
 end
 
+-------------------------------------------------------------------------------------
+--计算自动执行时间策略的间隔时间
+-------------------------------------------------------------------------------------
 --返回：
 --成功：interval,true    日期内有策略
 --      默认时间,true    日期内无策略
@@ -146,6 +153,9 @@ function m_rule_common.get_next_loop_interval()
     return (interval+1), true
 end
 
+-------------------------------------------------------------------------------------
+--请求http方法
+-------------------------------------------------------------------------------------
 --发起http请求
 function m_rule_common.request_http(protocol,url,cmd_param)
     ngx.log(ngx.INFO,"rule http_uri: ", url)
@@ -158,6 +168,45 @@ function m_rule_common.request_http(protocol,url,cmd_param)
         ngx.log(ngx.ERR,"http status: ", res,status)
     end
     g_http.uninit()
+end
+
+-------------------------------------------------------------------------------------
+--请求微服务方法
+-------------------------------------------------------------------------------------
+--打包HTTP请求数据
+local function encode_http_downstream_param(rule_obj)
+    local http_param_table = {}
+    math.randomseed(os.time())
+
+    http_param_table["Token"]     = '7GBox_rule'
+    http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(10,99))
+    http_param_table["DevType"]   = rule_obj["dev_type"]
+    http_param_table["DevId"]     = rule_obj["dev_id"]
+    http_param_table["DevChannel"]= rule_obj["dev_channel"]
+    http_param_table["Method"]    = rule_obj["method"]
+    local in_obj                  = cjson.decode(rule_obj["rule_param"])
+    http_param_table["In"]        = in_obj
+
+    return http_param_table
+end
+
+--给微服务发送HTTP请求
+function m_rule_common.exec_http_request(rule_obj)
+    local http_param_table = encode_http_downstream_param(rule_obj)
+    if next(http_param_table["In"]) == nil then
+        ngx.log(ngx.ERR,"rule param error ")
+        return false
+    end
+
+    local http_param_str = cjson.encode(http_param_table)
+
+    local res, err = g_micro.micro_post(rule_obj["dev_type"], http_param_str)
+    if err == false then
+        ngx.log(ngx.ERR,"http request micro service fail: ",res, err)
+        return false
+    end
+
+    return true
 end
 
 return m_rule_common
