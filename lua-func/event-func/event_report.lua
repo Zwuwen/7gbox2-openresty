@@ -8,8 +8,8 @@ local g_message = require("event-func.message_M")
 local event_conf = require("conf.event_conf")
 local g_micro = require("cmd-func.cmd_micro")
 local g_dev_status = require("dev-status-func.dev_status")
-local g_cmd_sync = require("alone-func.cmd_sync")
 local g_exec_rule = require("alone-func.exec_rule")
+local g_linkage = require("alone-func.linkage_sync")
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -121,10 +121,7 @@ function event_report_M.method_respone(body)
         local result = payload["Result"]
         if result == 0 then
             local json_str = g_dev_status.get_real_cmd_data(msg_id)
-            local json_body = cjson.decode(json_str)
             g_dev_status.set_ack_cmd_data(msg_id)
-            --命令切换手动
-			g_cmd_sync.insert_cmd_to_ruletable(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],json_body["Method"])
         end
         g_dev_status.del_control_method(msg_id)
     end
@@ -135,7 +132,7 @@ end
 local function linkage_start(body)
     --获取方法模式，设置redis
     for key,dev_id in pairs(body) do
-        dev_id = 1
+        g_linkage.linkage_start_stop_rule(nil,dev_id,1)
         --设备的时间策略失效
     end
 end
@@ -170,6 +167,7 @@ local function linkage_end(body)
         --所有方法根据时间戳排序恢复状态
         table.sort(dev_cmd_list,time_sort)
         cmd_post(dev_cmd_list)
+        g_linkage.linkage_start_stop_rule(nil,dev_id,0)
         --恢复模式
     end
 end
