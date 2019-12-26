@@ -10,6 +10,7 @@ local g_micro = require("cmd-func.cmd_micro")
 local g_dev_status = require("dev-status-func.dev_status")
 local g_exec_rule = require("alone-func.exec_rule")
 local g_linkage = require("alone-func.linkage_sync")
+local g_cmd_sync = require("alone-func.cmd_sync")
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -122,9 +123,16 @@ function event_report_M.method_respone(body)
         if result == 0 then
             local json_str = g_dev_status.get_real_cmd_data(msg_id)
             g_dev_status.set_ack_cmd_data(msg_id)
+            g_cmd_sync.insert_cmd_to_ruletable(json_str)
         end
-        g_dev_status.del_control_method(msg_id)
+    else
+        local payload = body["Payload"]
+        local result = payload["Result"]
+        if result == 0 then
+            g_dev_status.set_ack_cmd_data(msg_id)
+        end
     end
+    g_dev_status.del_control_method(msg_id)
 end
 
 --------------------------联动事件------------------------------------

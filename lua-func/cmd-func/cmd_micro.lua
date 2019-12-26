@@ -5,7 +5,6 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local g_http = require("common.http.myhttp_M")
 local cjson = require("cjson")
 local g_dev_status = require("dev-status-func.dev_status")
-local g_cmd_sync = require("alone-func.cmd_sync")
 
 ----------获取微服务url地址------------
 local function get_url_suffix(request_body)
@@ -21,7 +20,6 @@ local function get_url_suffix(request_body)
     else
         --设备微服务 命令存到redis,等待微服务执行结果确认
         g_dev_status.set_temp_cmd_data(request_body)
-        g_cmd_sync.insert_cmd_to_ruletable(request_body)
         return "ioctl"
     end
 end
