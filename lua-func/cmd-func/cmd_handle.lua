@@ -22,9 +22,14 @@ local function update_method()
 	local json_body = cjson.decode(request_body)
 	if json_body["Method"] == "ResetToAuto" then
 		--命令切换自动
-		g_cmd_sync.delete_cmd_from_ruletable(request_body)
-		local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
-		ngx.say(json_str)
+		if g_cmd_sync.delete_cmd_from_ruletable(request_body) == true then
+			local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
+			ngx.say(json_str)
+		else
+			local json_str = '{\n\"Code\":400,\n \"Msg\":\"Fail"\n\"Payload\":{}\n}'
+			ngx.say(json_str)
+		end
+		
 	elseif json_body["Method"] == "CancleLinkageRule" then
 		local res,status = g_micro.micro_delete("RuleEngine",request_body)
 		ngx.say(res)

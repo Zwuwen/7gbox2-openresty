@@ -122,8 +122,10 @@ function event_report_M.method_respone(body)
         local result = payload["Result"]
         if result == 0 then
             local json_str = g_dev_status.get_real_cmd_data(msg_id)
-            g_dev_status.set_ack_cmd_data(msg_id)
-            g_cmd_sync.insert_cmd_to_ruletable(json_str)
+            if json_str~=nil then
+                g_dev_status.set_ack_cmd_data(msg_id)
+                g_cmd_sync.insert_cmd_to_ruletable(json_str)
+            end
         end
     else
         local payload = body["Payload"]
