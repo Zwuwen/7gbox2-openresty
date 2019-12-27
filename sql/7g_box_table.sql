@@ -57,3 +57,9 @@ create table run_rule_tbl(
 	linkage_running int not null default(0),
 	running int not null default(0)
 );
+create table program_info_tbl (
+	program_id text not null primary key,
+	program_url text not null,
+	program_md5 text not null,
+	download_time timestamp(0)
+);
