@@ -150,7 +150,7 @@ function m_cmd_sync.delete_cmd_from_ruletable(cmd_json)
     local dev_type = cmd_table["DevType"]
     local dev_id = cmd_table["DevId"]
     local dev_channel = cmd_table["DevChannel"]
-    local cmd_method = cmd_table["Method"]
+    local cmd_method = cmd_table["In"]["Method"]
 
     local uuid_str =  string.format("%s-%d-%d-%s", dev_type, dev_id, dev_channel, cmd_method)
     local qres,qerr = g_sql_app.query_rule_tbl_by_uuid(uuid_str)
