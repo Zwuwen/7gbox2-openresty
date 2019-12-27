@@ -147,7 +147,7 @@ local function create_rule(req_payload)
 		   	json_obj["Priority"] > g_rule_common.time_priority_l)
 		then
 			ngx.log(ngx.ERR,"time rule priority is 8~13")
-			return "time rule priority should is 8~13", false
+			return "time rule priority should be 8~13", false
 		end
 
 		--去除空格

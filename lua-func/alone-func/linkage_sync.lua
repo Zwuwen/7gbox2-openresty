@@ -7,8 +7,27 @@ local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_exec_rule = require("alone-func.exec_rule")
 
+
+--获取设备类型
+local function get_devtype(dev_id)
+	local dev_type = nil
+    local sql_str = string.format("select * from dev_info_tbl where dev_id=%d",dev_id)
+    local res,err = g_sql_app.query_table(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res,err)
+        return "", false
+    end
+    if next(res) == nil then
+        ngx.log(ngx.ERR,"device not exist")
+        return "", false
+    else
+		dev_type = res[1]["dev_type"]
+    end
+	return dev_type,true
+end
+
 --更新linkage_running
-local function update_linkage_running(dev_type, dev_id, running)
+function m_linkage_sync.update_linkage_running(dev_type, dev_id, running)
     local sql_str = string.format("update run_rule_tbl set linkage_running=%d where dev_type=\'%s\' and dev_id=%d", running, dev_type, dev_id)
     
     local res, err = g_sql_app.exec_sql(sql_str)
@@ -21,7 +40,7 @@ end
 
 --联动执行，停止策略
 local function linkage_stop_rule_running(dev_type, dev_id)
-    local err = update_linkage_running(dev_type, dev_id, 1)
+    local err = m_linkage_sync.update_linkage_running(dev_type, dev_id, 1)
     if err == false then
         ngx.log(ngx.ERR,"update linkage_running err")
         return false
@@ -50,7 +69,7 @@ end
 
 --联动取消，执行策略
 local function linkage_restore_rule_running(dev_type, dev_id)
-    local err = update_linkage_running(dev_type, dev_id, 0)
+    local err = m_linkage_sync.update_linkage_running(dev_type, dev_id, 0)
     if err == false then
         ngx.log(ngx.ERR,"update linkage_running err")
         return false
@@ -73,6 +92,14 @@ end
 --  true：设置成功
 function m_linkage_sync.linkage_start_stop_rule(dev_type, dev_id, status)
     local rt = false
+    if dev_type == nil then
+        local res, err = get_devtype(dev_id)
+        if err == false then
+            return false
+        end
+        dev_type = res
+    end
+    
     if status == 1 then
         rt = linkage_stop_rule_running(dev_type, dev_id)
     elseif status == 0 then

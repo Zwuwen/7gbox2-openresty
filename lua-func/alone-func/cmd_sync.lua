@@ -7,6 +7,7 @@ local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_exec_rule = require("alone-func.exec_rule")
 local g_rule_timer = require("alone-func.rule_timer")
+local g_linkage_sync = require("alone-func.linkage_sync")
 
 --function define
 local function check_cmd_input(table)
@@ -108,6 +109,14 @@ function m_cmd_sync.insert_cmd_to_ruletable(cmd_json)
         ngx.log(ngx.ERR," ", qres,qerr)
         return false
     end
+
+    --清除联动策略运行标志
+    local err = g_linkage_sync.update_linkage_running(dev_type, dev_id, 0)
+    if err == false then
+        ngx.log(ngx.ERR,"clear linkage running fail")
+        return false
+    end
+
     if next(qres) == nil then
         ngx.log(ngx.INFO,"insert new cmd to rule table")
         local res,err = g_sql_app.insert_rule_tbl(rule_table)

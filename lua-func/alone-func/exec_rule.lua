@@ -203,6 +203,12 @@ local function exec_a_rule(rule_obj)
         --手动命令，不执行
         ngx.log(ngx.NOTICE  ,"cmd running, ignore rule! ")
     else
+        --检测联动是否在执行
+        local rt = check_linkage_running(rule_obj["dev_type"], rule_obj["dev_id"])
+        if rt == false then
+            ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
+            return false
+        end
         --执行rule
         local err = g_rule_common.exec_http_request(rule_obj)
         if err == false then
@@ -230,12 +236,6 @@ end
 
 --执行设备某个channel某个method的策略
 function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
-    local rt = check_linkage_running(dev_type, dev_id)
-    if rt == false then
-        ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
-        return false
-    end
-
     --选择最优的一条策略
     local ruletable, err = g_sql_app.query_rule_tbl_by_method(dev_type, dev_id, channel, method)
     if err then
