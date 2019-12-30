@@ -54,7 +54,8 @@ function event_report_M.thing_online(devices)
         dev_dict["Attributes"] = attributes
         table.insert(dev_list,dev_dict)
     end
-    local online_object = g_message.creat_online_object("00E04C360350",dev_list)
+    local gw = g_sql_app.query_dev_info_tbl(0)
+    local online_object = g_message.creat_online_object(gw.sn,dev_list)
     event_send_message(event_conf.url,cjson.encode(online_object))
 end
 
@@ -73,7 +74,8 @@ function event_report_M.thing_offline(devices)
         value["Attributes"] = attributes
         table.insert(dev_list,value)
     end
-    local offline_object = g_message.creat_offline_object("00E04C360350",dev_list)
+    local gw = g_sql_app.query_dev_info_tbl(0)
+    local offline_object = g_message.creat_offline_object(gw.sn,dev_list)
     event_send_message(event_conf.url,cjson.encode(offline_object))
 end
 
@@ -106,14 +108,16 @@ local function rule_engine_trigger(body)
 end
 
 function event_report_M.attribute_change(body)
-    body["GW"] = "00E04C360350"
+    local gw = g_sql_app.query_dev_info_tbl(0)
+    body["GW"] = gw.sn
     event_send_message(event_conf.url,cjson.encode(body))
     rule_engine_trigger(body)
 end
 
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
-    body["GW"] = "1010-10000"
+    local gw = g_sql_app.query_dev_info_tbl(0)
+    body["GW"] = gw.sn
     local msg_id = body["MsgId"]
     ngx.log(ngx.ERR,"###method_respone MsgId: ",msg_id)
     if string.find(msg_id, "time_", 1) == nil then
