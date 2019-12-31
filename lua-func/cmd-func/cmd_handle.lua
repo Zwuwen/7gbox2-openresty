@@ -37,7 +37,16 @@ local function update_method()
 		--转发命令到微服务
 		if json_body["DevType"]~=nil and json_body["DevId"]~=nil and json_body["DevChannel"]~=nil and json_body["Method"]~=nil then
 			local res,status = g_micro.micro_post(json_body["DevType"],request_body)
-			ngx.say(res)
+			if json_body["MsgId"]~=nil then
+				local return_json = cjson.decode(res)
+				return_json["MsgId"] = json_body["MsgId"]
+				local gw = g_sql_app.query_dev_info_tbl(0)
+				return_json["GW"] = gw[1]["sn"]
+				local res_str = cjson.encode(return_json)
+				ngx.say(res_str)
+			else
+				ngx.say(res)
+			end
 		else
 			local json_str = '{\n\"Code\":400,\n \"Msg\":\"Parameter is err!"\n\"Payload\":{}\n}'
 			ngx.say(json_str)

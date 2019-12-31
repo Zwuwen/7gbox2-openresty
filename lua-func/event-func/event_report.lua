@@ -54,8 +54,8 @@ function event_report_M.thing_online(devices)
         dev_dict["Attributes"] = attributes
         table.insert(dev_list,dev_dict)
     end
-    local gw = g_sql_app.query_dev_info_tbl(0)
-    local online_object = g_message.creat_online_object(gw.sn,dev_list)
+    local gw,err= g_sql_app.query_dev_info_tbl(0)
+    local online_object = g_message.creat_online_object(gw[1]["sn"],dev_list)
     event_send_message(event_conf.url,cjson.encode(online_object))
 end
 
@@ -75,7 +75,7 @@ function event_report_M.thing_offline(devices)
         table.insert(dev_list,value)
     end
     local gw = g_sql_app.query_dev_info_tbl(0)
-    local offline_object = g_message.creat_offline_object(gw.sn,dev_list)
+    local offline_object = g_message.creat_offline_object(gw[1]["sn"],dev_list)
     event_send_message(event_conf.url,cjson.encode(offline_object))
 end
 
@@ -109,7 +109,7 @@ end
 
 function event_report_M.attribute_change(body)
     local gw = g_sql_app.query_dev_info_tbl(0)
-    body["GW"] = gw.sn
+    body["GW"] = gw[1]["sn"]
     event_send_message(event_conf.url,cjson.encode(body))
     rule_engine_trigger(body)
 end
@@ -117,7 +117,7 @@ end
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
     local gw = g_sql_app.query_dev_info_tbl(0)
-    body["GW"] = gw.sn
+    body["GW"] = gw[1]["sn"]
     local msg_id = body["MsgId"]
     ngx.log(ngx.ERR,"###method_respone MsgId: ",msg_id)
     if string.find(msg_id, "time_", 1) == nil then
@@ -253,7 +253,7 @@ function event_report_M.platform_online_event(body)
         local gw_message = get_gw_message()
         local Attributes = gw_message["Attributes"]
         Attributes["Online"] = 1
-        Attributes["SN"] = gw.sn
+        Attributes["SN"] = gw[1]["sn"]
         local Playload = {}
         Playload["Attributes"] = Attributes
         Playload["Methods"] = gw_message["Methods"]
@@ -261,7 +261,7 @@ function event_report_M.platform_online_event(body)
         local message = {}
         message["Token"] = "7GBox"
         message["Event"] = "StatusUpload"
-        message["GW"] = gw.sn
+        message["GW"] = gw[1]["sn"]
         message["Payload"] = Playload
         event_send_message(event_conf.url,cjson.encode(message))
     elseif body["Status"] == 0 then
@@ -275,7 +275,7 @@ function event_report_M.platform_heart_event()
     local res,err = g_sql_app.query_all_dev_info_tbl()
     for key,device in pairs(res) do
         if device.dev_id == 0 then
-            message["GW"] = device.sn
+            message["GW"] = device["sn"]
             event_send_message(event_conf.url,cjson.encode(message))
         end
     end
