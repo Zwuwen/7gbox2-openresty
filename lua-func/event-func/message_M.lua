@@ -7,7 +7,9 @@ function message_M.creat_online_object(gw_uuid,device_list)
     online_object["Token"] = "7GBox"
     online_object["Event"] = "StatusUpload"
     online_object["GW"] = gw_uuid
-    online_object["Devices"] = device_list
+    local payload = {}
+    payload["Devices"] = device_list
+    online_object["Payload"] = payload
     return online_object
 end
 
@@ -16,7 +18,9 @@ function message_M.creat_offline_object(gw_uuid, device_list)
     offline_object["Token"] = "7GBox"
     offline_object["Event"] = "StatusUpload"
     offline_object["GW"] = gw_uuid
-    offline_object["Devices"] = device_list
+    local payload = {}
+    payload["Devices"] = device_list
+    offline_object["Payload"] = payload
     return offline_object
 end
 

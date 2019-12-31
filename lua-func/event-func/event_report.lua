@@ -83,7 +83,7 @@ end
 -----规则引擎触发
 local function rule_engine_trigger(body)
     if body["Event"] == "StatusUpload" then
-        local devices = body["Devices"]
+        local devices = body["Payload"]["Devices"]
         for key, value in pairs(devices) do
             local request_body = {}
             request_body["Event"] = "StatusUpload"
