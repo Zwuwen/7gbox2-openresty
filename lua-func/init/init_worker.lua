@@ -4,6 +4,7 @@ local g_exec_heart = require("init.init_heartbeat")
 local g_event_report = require("event-func.event_report")
 local heart_time = 60
 local regular_report_time = 300
+local plat_report_time = 30
 
 --------------------------------main function----------------------------
 --定时任务，执行策略
@@ -38,5 +39,18 @@ if not ok then
     return
 else
     ngx.log(ngx.ERR,"regular report running success")
+end
+
+--平台心跳
+local platform_heart_report_loop = function()
+    g_event_report.platform_heart_event()
+end
+
+local ok,err = ngx.timer.every(plat_report_time,platform_heart_report_loop)
+if not ok then
+    ngx.log(ngx.ERR,"platform heart report running failure")
+    return
+else
+    ngx.log(ngx.ERR,"platform heart report running success")
 end
 
