@@ -253,7 +253,7 @@ function event_report_M.platform_online_event(body)
         local gw_message = get_gw_message()
         local Attributes = gw_message["Attributes"]
         Attributes["Online"] = 1
-        Attributes["SN"] = gw[1]["sn"]
+        Attributes["SN"] = gw["sn"]
         local Playload = {}
         Playload["Attributes"] = Attributes
         Playload["Methods"] = gw_message["Methods"]
@@ -261,7 +261,7 @@ function event_report_M.platform_online_event(body)
         local message = {}
         message["Token"] = "7GBox"
         message["Event"] = "StatusUpload"
-        message["GW"] = gw[1]["sn"]
+        message["GW"] = gw["sn"]
         message["Payload"] = Playload
         event_send_message(event_conf.url,cjson.encode(message))
     elseif body["Status"] == 0 then
