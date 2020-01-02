@@ -10,12 +10,7 @@ function myhttp_M.init()
 end
 
 function myhttp_M.uninit()
-	if http ~= nil then
-		local rt = http:close()
-	end
-	
-	http = nil
-	http_module = nil
+
 end
 
 function myhttp_M.request_url(url,method_str,body_str)
