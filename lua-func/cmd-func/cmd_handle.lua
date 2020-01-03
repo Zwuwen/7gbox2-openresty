@@ -42,6 +42,7 @@ local function update_method()
 				return_json["MsgId"] = json_body["MsgId"]
 				local gw = g_sql_app.query_dev_info_tbl(0)
 				return_json["GW"] = gw[1]["sn"]
+				return_json["Event"] = "ReqStsUpload"
 				local res_str = cjson.encode(return_json)
 				ngx.say(res_str)
 			else

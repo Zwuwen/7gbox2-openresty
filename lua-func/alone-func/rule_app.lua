@@ -17,7 +17,7 @@ local g_rule_timer = require("alone-func.rule_timer")
 local g_report_event = require("alone-func.rule_report_event")
 --local g_linkage_sync = require("alone-func.linkage_sync")
 local g_cmd_micro = require("cmd-func.cmd_micro")
-
+local report_event  = require("event-func.event_report")
 --function define
 local function is_key_exist(key)
 	if key == "RuleUuid" then
@@ -586,10 +586,18 @@ if request_method == "GET" then
 		data_table, result = select_rule(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
-		ngx.say(data_str)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
+		return_json["Event"] = "ResultUpload"
+		report_event.method_respone(return_json)
 		return
 	end
-	
 	if result == false then
 		local json_str = encode_select_response(1, 'Failure', data_table)
 		ngx.say(json_str)
