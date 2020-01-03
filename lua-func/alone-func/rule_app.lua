@@ -554,13 +554,22 @@ if check_json["MsgId"] ~= nil then
 end
 local msg_id = check_json["MsgId"]
 
-if type(check_json["RuleType"]) ~= "string" then
+if check_json["Payload"] == nil then
+	ngx.log(ngx.ERR,"Rule body has no Payload")
+	local json_str = '{\n\"errcode\":400,\n \"msg\":\"Rule body has no Payload\",\n\"payload\":{}\n}'
+	ngx.say(json_str)
+	return
+end
+
+payload_json = check_json["Payload"]
+
+if type(payload_json["RuleType"]) ~= "string" then
 	ngx.log(ngx.ERR,"RuleType type err")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"RuleType type err\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
 	return
 end
-if check_json["RuleType"] ~= "TimerRule" and check_json["RuleType"] ~= "LinkageRule" then
+if payload_json["RuleType"] ~= "TimerRule" and payload_json["RuleType"] ~= "LinkageRule" then
 	ngx.log(ngx.ERR,"rule type error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"rule type error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
@@ -573,9 +582,9 @@ if request_method == "GET" then
 	local result = false
 	local data_table = {}
 	local data_str = ""
-	if check_json["RuleType"] == "TimerRule" then
+	if payload_json["RuleType"] == "TimerRule" then
 		data_table, result = select_rule(request_body)
-	elseif check_json["RuleType"] == "LinkageRule" then
+	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
 		ngx.say(data_str)
 		return
@@ -592,9 +601,9 @@ elseif request_method == "POST" then
 	local result = false
 	local data_table = {}
 	local data_str = ""
-	if check_json["RuleType"] == "TimerRule" then
+	if payload_json["RuleType"] == "TimerRule" then
 		data_table, result = create_rule(request_body)
-	elseif check_json["RuleType"] == "LinkageRule" then
+	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_post(linkage_ser,request_body)
 		ngx.say(data_str)
 		return
@@ -613,9 +622,9 @@ elseif request_method == "PUT" then
 	local result = false
 	local data_table = {}
 	local data_str = ""
-	if check_json["RuleType"] == "TimerRule" then
+	if payload_json["RuleType"] == "TimerRule" then
 		data_table, result = update_rule(request_body)
-	elseif check_json["RuleType"] == "LinkageRule" then
+	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
 		ngx.say(data_str)
 		return
@@ -634,9 +643,9 @@ elseif request_method == "DELETE" then
 	local result = false
 	local data_table = {}
 	local data_str = ""
-	if check_json["RuleType"] == "TimerRule" then
+	if payload_json["RuleType"] == "TimerRule" then
 		data_table, result = delete_rule(request_body)
-	elseif check_json["RuleType"] == "LinkageRule" then
+	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
 		ngx.say(data_str)
 		return
