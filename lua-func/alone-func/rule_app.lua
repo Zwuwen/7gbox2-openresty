@@ -613,7 +613,14 @@ elseif request_method == "POST" then
 		data_table, result = create_rule(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_post(linkage_ser,request_body)
-		ngx.say(data_str)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
 		return
 	end
 
@@ -655,7 +662,14 @@ elseif request_method == "DELETE" then
 		data_table, result = delete_rule(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
-		ngx.say(data_str)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
 		return
 	end
 
