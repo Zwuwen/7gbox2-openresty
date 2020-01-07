@@ -43,7 +43,6 @@ function event_report_M.thing_online(devices)
         local dev_type = value["DevType"]
         --执行该设备的时间策略
         g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
-
         --上报属性
         local device_object = get_db_device_message(dev_id)
         local dev_dict = cjson.decode(device_object)
@@ -51,6 +50,8 @@ function event_report_M.thing_online(devices)
         dev_dict["DevId"] = dev_id
         local attributes = {}
         attributes["Online"] = 1
+        local result = g_sql_app.query_dev_status_tbl(dev_id)
+        attributes["AutoMod"] = result[1]["auto_mode"]
         dev_dict["Attributes"] = attributes
         table.insert(dev_list,dev_dict)
     end
@@ -146,7 +147,9 @@ end
 local function linkage_start(body)
     --获取方法模式，设置redis
     for key,dev_id in pairs(body) do
-        g_linkage.linkage_start_stop_rule(nil,dev_id,1)
+        local update_json = {}
+		update_json["linkage_rule"] = 1
+		g_sql_app.update_dev_status_tbl(dev_id,update_json)
         --设备的时间策略失效
     end
 end
@@ -156,8 +159,11 @@ local function cmd_post(dev_cmd_list)
     for k,cmd_obj in pairs(dev_cmd_list) do
         cmd_obj["MsgId"] = nil
         cmd_obj["TimeStamp"] = nil
-        json_str = cjson.encode(cmd_obj)
-        local res,ok = g_micro.micro_post(cmd_obj["DevType"],json_str)
+        if string.find(cmd_obj["Method"], "Reboot", 1) == nil or string.find(cmd_obj["Method"], "ScreenShot", 1) == nil then
+            local json_str = cjson.encode(cmd_obj)
+            local res,ok = g_micro.micro_post(cmd_obj["DevType"],json_str)
+        end
+
     end
 end
 
@@ -169,6 +175,9 @@ end
 --联动结束
 local function linkage_end(body)
     for key,dev_id in pairs(body) do
+        local update_json = {}
+		update_json["linkage_rule"] = 0
+		g_sql_app.update_dev_status_tbl(dev_id,update_json)
         local dev_cmd_list = {}
         --匹配该设备id所有方法
         local key_str = string.format("%d-*",dev_id)
@@ -181,8 +190,9 @@ local function linkage_end(body)
         --所有方法根据时间戳排序恢复状态
         table.sort(dev_cmd_list,time_sort)
         cmd_post(dev_cmd_list)
-        g_linkage.linkage_start_stop_rule(nil,dev_id,0)
         --恢复模式
+        g_linkage.linkage_start_stop_rule(nil,dev_id,0)
+        
     end
 end
 
@@ -225,16 +235,6 @@ local function creat_device_message(dev_type,dev_id,methods)
     return dev_dict
 end
 
-local function get_gw_message()
-    local dev_dict = {}
-    local res,err = g_sql_app.query_dev_status_tbl(0)
-    if res then
-        for key, value in ipairs(res) do
-            dev_dict = cjson.decode(value.attribute)
-        end
-    end
-    return dev_dict
-end
 
 function event_report_M.platform_online_event(body)
     if body["Status"] == 1 then
@@ -250,20 +250,23 @@ function event_report_M.platform_online_event(body)
                 gw = device    
             end
         end
-        local gw_message = get_gw_message()
-        local Attributes = gw_message["Attributes"]
-        Attributes["Online"] = 1
-        Attributes["SN"] = gw["sn"]
-        local Playload = {}
-        Playload["Attributes"] = Attributes
-        Playload["Methods"] = gw_message["Methods"]
-        Playload["Devices"] = dev_list
-        local message = {}
-        message["Token"] = "7GBox"
-        message["Event"] = "StatusUpload"
-        message["GW"] = gw["sn"]
-        message["Payload"] = Playload
-        event_send_message(event_conf.url,cjson.encode(message))
+        local gw_message =  g_sql_app.query_dev_status_tbl(0)
+        if gw_message[1]["Attributes"] ~= nil then
+            local Attributes = gw_message["Attributes"]
+            Attributes["Online"] = 1
+            Attributes["SN"] = gw["sn"]
+            local Playload = {}
+            Playload["Attributes"] = Attributes
+            Playload["Methods"] = gw_message["Methods"]
+            Playload["Devices"] = dev_list
+            local message = {}
+            message["Token"] = "7GBox"
+            message["Event"] = "StatusUpload"
+            message["GW"] = gw["sn"]
+            message["Payload"] = Playload
+            event_send_message(event_conf.url,cjson.encode(message))
+        end
+        
     elseif body["Status"] == 0 then
     end
 end

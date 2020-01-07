@@ -10,6 +10,8 @@ create table dev_status_tbl (
 	online int not null,
 	attribute text,
 	last_online_time timestamp(0)
+	auto_mode int not null,
+	linkage_rule int not null
 );
 
 create table dev_info_tbl (

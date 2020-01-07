@@ -164,6 +164,14 @@ function g_orm_info_M.update_dev_status_tbl(dev_id, json)
 		sql_str = string.format( "%s last_online_time=\'%s\',", sql_str, json["last_online_time"])
 	end
 
+	if json["auto_mode"] ~= nil then
+		sql_str = string.format( "%s auto_mode=%d,", sql_str, json["auto_mode"])
+	end
+
+	if json["linkage_rule"] ~= nil then
+		sql_str = string.format( "%s linkage_rule=%d,", sql_str, json["linkage_rule"])
+	end
+
 	sql_str = string.format( "%s where dev_id=%d", sql_str, dev_id)
 	sql_str = string.gsub(sql_str, ', where', ' where', 1)
 	ngx.log(ngx.ERR," ", sql_str)
