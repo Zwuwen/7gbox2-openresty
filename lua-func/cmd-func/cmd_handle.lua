@@ -6,6 +6,7 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_micro = require("cmd-func.cmd_micro")
 local g_event_report = require("event-func.event_report")
+local g_cmd_sync = require("alone-func/cmd_sync.lua")
 
 -----------------cmd get method---------------------
 local function get_method()
@@ -64,6 +65,7 @@ local function update_method()
 		update_json["auto_mode"] = 1
 		update_json["online"] = 1
 		g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
+		g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 0)
 		local res = creat_respone_message(0,"Success")
 		message_pack(json_body,res)
 		local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],1)
@@ -74,6 +76,7 @@ local function update_method()
 		update_json["auto_mode"] = 0
 		update_json["online"] = 1
 		g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
+		g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 1)
 		local res = creat_respone_message(0,"Success")
 		message_pack(json_body,res)
 		local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],0)

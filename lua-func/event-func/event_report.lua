@@ -150,7 +150,8 @@ local function linkage_start(body)
         local update_json = {}
         update_json["linkage_rule"] = 1
         update_json["online"] = 1
-		g_sql_app.update_dev_status_tbl(dev_id,update_json)
+        g_sql_app.update_dev_status_tbl(dev_id,update_json)
+        g_linkage.linkage_start_stop_rule(nil,dev_id,1)
         --设备的时间策略失效
     end
 end
