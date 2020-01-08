@@ -148,7 +148,8 @@ local function linkage_start(body)
     --获取方法模式，设置redis
     for key,dev_id in pairs(body) do
         local update_json = {}
-		update_json["linkage_rule"] = 1
+        update_json["linkage_rule"] = 1
+        update_json["online"] = 1
 		g_sql_app.update_dev_status_tbl(dev_id,update_json)
         --设备的时间策略失效
     end
@@ -176,7 +177,8 @@ end
 local function linkage_end(body)
     for key,dev_id in pairs(body) do
         local update_json = {}
-		update_json["linkage_rule"] = 0
+        update_json["linkage_rule"] = 0
+        update_json["online"] = 1
 		g_sql_app.update_dev_status_tbl(dev_id,update_json)
         local dev_cmd_list = {}
         --匹配该设备id所有方法
@@ -251,8 +253,8 @@ function event_report_M.platform_online_event(body)
             end
         end
         local gw_message =  g_sql_app.query_dev_status_tbl(0)
-        if gw_message[1]["Attributes"] ~= nil then
-            local Attributes = gw_message["Attributes"]
+        if gw_message[1] ~= nil then
+            local Attributes = gw_message[1]["Attributes"]
             Attributes["Online"] = 1
             Attributes["SN"] = gw["sn"]
             local Playload = {}

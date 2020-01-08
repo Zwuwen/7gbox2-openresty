@@ -62,6 +62,7 @@ local function update_method()
 		--命令切换自动
 		local update_json = {}
 		update_json["auto_mode"] = 1
+		update_json["online"] = 1
 		g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
 		local res = creat_respone_message(0,"Success")
 		message_pack(json_body,res)
@@ -71,6 +72,7 @@ local function update_method()
 		--命令切换手动
 		local update_json = {}
 		update_json["auto_mode"] = 0
+		update_json["online"] = 1
 		g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
 		local res = creat_respone_message(0,"Success")
 		message_pack(json_body,res)
