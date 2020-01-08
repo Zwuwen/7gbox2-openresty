@@ -17,7 +17,7 @@ create table dev_status_tbl (
 create table dev_info_tbl (
 	dev_id serial primary key not null,
 	dev_type text not null,
-	interface_type int not null,
+	interface_type text not null,
 	manufacturer_id int not null,
 	sn text,
 	ability_method text,
@@ -27,7 +27,7 @@ create table dev_info_tbl (
 create table config_ip_tbl (
 	dev_id int not null primary key,
 	ip text not null,
-	port int not null,
+	port int,
 	mac text,
 	usr text,
 	passwd text
