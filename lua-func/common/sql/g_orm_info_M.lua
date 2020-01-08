@@ -532,7 +532,7 @@ end
 
 --通用查询方法
 function g_orm_info_M.query_table(sql_str)
-	--ngx.log(ngx.ERR," ",sql_str)
+	ngx.log(ngx.ERR," ",sql_str)
 	local res,err = db:query(sql_str)
 	return res,err
 end

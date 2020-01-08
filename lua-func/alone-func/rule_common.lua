@@ -68,6 +68,38 @@ function m_rule_common.http_str_trim(rule_obj)
 end
 
 -------------------------------------------------------------------------------------
+--lua通用方法
+-------------------------------------------------------------------------------------
+--字符串在表中是否存在
+function m_rule_common.is_include(value, table)
+    for k,v in ipairs(table) do
+      if v == value then
+          return true
+      end
+    end
+    return false
+end
+
+--表深拷贝
+function m_rule_common.table_clone(object)
+    local lookup_table = {}
+    local function _copy(object)
+        if type(object) ~= "table" then
+            return object
+        elseif lookup_table[object] then
+            return lookup_table[object]
+        end
+        local new_table = {}
+        lookup_table[object] = new_table
+        for key, value in pairs(object) do
+            new_table[_copy(key)] = _copy(value)
+        end
+        return setmetatable(new_table, getmetatable(object))
+    end
+    return _copy(object)
+end
+
+-------------------------------------------------------------------------------------
 --计算自动执行时间策略的间隔时间
 -------------------------------------------------------------------------------------
 --返回：
