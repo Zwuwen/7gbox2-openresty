@@ -152,6 +152,30 @@ local function check_linkage_running(dev_type, dev_id)
     end
 end
 
+--判断设备是否在手动模式
+local function check_cmd_running(dev_type, dev_id)
+    local auto_mode = 0
+    local res, err = g_sql_app.query_dev_status_tbl(dev_id)
+    if err then
+        ngx.log(ngx.ERR," ", res, err)
+        return 0, false
+    end
+    if next(res) == nil then
+        ngx.log(ngx.ERR,"device id not exist")
+        return 0, false
+    else
+		auto_mode = res[1]["auto_mode"]
+    end
+    
+    ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
+    if auto_mode == 1 then
+        return false    --自动模式
+    else
+        ngx.log(ngx.INFO,"cmd is running")
+        return true     --手动模式
+    end
+end
+
 function m_exec_rule.clear_device_running(dev_type, dev_id)
     local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
     
@@ -207,24 +231,23 @@ end
 --执行策略
 local function exec_a_rule(rule_obj)
     --dump_rule(rule_obj)
-    if (rule_obj["priority"] == g_rule_common.cmd_priority) then
-        --手动命令，不执行
-        ngx.log(ngx.NOTICE  ,"cmd running, ignore rule! ")
-    else
-        --检测联动是否在执行
-        local rt = check_linkage_running(rule_obj["dev_type"], rule_obj["dev_id"])
-        if rt == true then
-            ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
-            return false
-        end
-        --执行rule
-        local err = g_rule_common.exec_http_request(rule_obj)
-        if err == false then
-            ngx.log(ngx.ERR,"request http fail ")
-            return false
-        end
-
-        --执行成功
+    --检测联动是否在执行
+    local rt = check_linkage_running(rule_obj["dev_type"], rule_obj["dev_id"])
+    if rt == true then
+        ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
+        return false
+    end
+    --检测是否手动模式
+    local rt = check_cmd_running(rule_obj["dev_type"], rule_obj["dev_id"])
+    if rt == true then
+        ngx.log(ngx.NOTICE,"cmd running, ignore rule! ")
+        return false
+    end
+    --执行rule
+    local err = g_rule_common.exec_http_request(rule_obj)
+    if err == false then
+        ngx.log(ngx.ERR,"request http fail ")
+        return false
     end
     
     --update running
@@ -304,6 +327,11 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     local rt = check_linkage_running(dev_type, dev_id)
     if rt == true then
         ngx.log(ngx.NOTICE,"linkage is running")
+        return
+    end
+    local rt = check_cmd_running(dev_type, dev_id)
+    if rt == true then
+        ngx.log(ngx.NOTICE,"cmd is running")
         return
     end
 
