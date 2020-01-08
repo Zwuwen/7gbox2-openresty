@@ -9,7 +9,7 @@ create table dev_status_tbl (
 	dev_id int not null primary key,
 	online int not null,
 	attribute text,
-	last_online_time timestamp(0)
+	last_online_time timestamp(0),
 	auto_mode int not null,
 	linkage_rule int not null
 );
@@ -56,7 +56,6 @@ create table run_rule_tbl(
 	end_time time not null,
 	start_date date not null,
 	end_date date not null,
-	linkage_running int not null default(0),
 	running int not null default(0)
 );
 create table program_info_tbl (

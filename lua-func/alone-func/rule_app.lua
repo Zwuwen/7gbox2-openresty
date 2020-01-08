@@ -910,7 +910,7 @@ if all_json["Payload"] == nil then
 	return
 end
 
-payload_json = all_json["Payload"]
+local payload_json = all_json["Payload"]
 
 if type(payload_json["RuleType"]) ~= "string" then
 	ngx.log(ngx.ERR,"RuleType type err")

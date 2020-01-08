@@ -35,7 +35,6 @@ function m_rule_common.db_attr_to_display(src_obj)
 	dst_obj["EndTime"]   = src_obj["end_time"]
 	dst_obj["StartDate"] = src_obj["start_date"]
     dst_obj["EndDate"]   = src_obj["end_date"]
-    dst_obj["LinkRunning"]= src_obj["linkage_running"]
 	dst_obj["Running"]   = src_obj["running"]
 
 	dst_obj["RuleParam"] = cjson.decode(dst_obj["RuleParam"])

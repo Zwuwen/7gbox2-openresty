@@ -26,26 +26,38 @@ local function get_devtype(dev_id)
 	return dev_type,true
 end
 
---更新linkage_running
-function m_linkage_sync.update_linkage_running(dev_type, dev_id, running)
-    local sql_str = string.format("update run_rule_tbl set linkage_running=%d where dev_type=\'%s\' and dev_id=%d", running, dev_type, dev_id)
-    
-    local res, err = g_sql_app.exec_sql(sql_str)
+--获取dev_status_tbl-linkage_rule
+function m_linkage_sync.get_linkage_rule(dev_type, dev_id)
+    local linkage_run = 0
+    local res, err = g_sql_app.query_dev_status_tbl(dev_id)
     if err then
         ngx.log(ngx.ERR," ", res, err)
-        return false
+        return 0, false
     end
-    return true
+    if next(res) == nil then
+        ngx.log(ngx.ERR,"device id not exist")
+        return 0, false
+    else
+		linkage_run = res[1]["linkage_rule"]
+    end
+    
+    ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
+    return linkage_run, true
 end
 
 --联动执行，停止策略
 local function linkage_stop_rule_running(dev_type, dev_id)
-    local err = m_linkage_sync.update_linkage_running(dev_type, dev_id, 1)
+    local res, err = m_linkage_sync.get_linkage_rule(dev_type, dev_id)
     if err == false then
-        ngx.log(ngx.ERR,"update linkage_running err")
+        ngx.log(ngx.ERR,"get linkage_rule err")
         return false
     end
-
+    
+    if res == 0 then
+        ngx.log(ngx.ERR,"linkage not running, exit")
+        return false
+    end
+    --linkage_rule == 1
     --策略
     local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
     local res, err = g_sql_app.exec_sql(sql_str)
@@ -54,27 +66,22 @@ local function linkage_stop_rule_running(dev_type, dev_id)
         ngx.log(ngx.ERR,"update cmd rule running err")
         return false
     end
-
-    --删除被中断的手动命令
-    local sql_str = string.format("delete from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and priority=%d", dev_type, dev_id, g_rule_common.cmd_priority)
-    local res, err = g_sql_app.exec_sql(sql_str)
-    if err then
-        ngx.log(ngx.ERR," ", res, err)
-        ngx.log(ngx.ERR,"delete cmd err")
-        return false
-    end
-
     return true
 end
 
 --联动取消，执行策略
 local function linkage_restore_rule_running(dev_type, dev_id)
-    local err = m_linkage_sync.update_linkage_running(dev_type, dev_id, 0)
+    local res, err = m_linkage_sync.get_linkage_rule(dev_type, dev_id)
     if err == false then
-        ngx.log(ngx.ERR,"update linkage_running err")
+        ngx.log(ngx.ERR,"get linkage_rule err")
         return false
     end
-
+    
+    if res == 1 then
+        ngx.log(ngx.ERR,"linkage is still running, ignore time rule")
+        return false
+    end
+    --linkage_rule == 0
     --执行设备的策略
     g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     return true

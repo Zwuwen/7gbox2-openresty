@@ -130,18 +130,26 @@ end
 
 --判断设备是否有联动在执行
 local function check_linkage_running(dev_type, dev_id)
-    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and linkage_running=1", dev_type, dev_id)
-    local rule_table,err = g_sql_app.query_table(sql_str)
+    local linkage_run = 0
+    local res, err = g_sql_app.query_dev_status_tbl(dev_id)
     if err then
-        ngx.log(ngx.ERR," ", err)
+        ngx.log(ngx.ERR," ", res, err)
         return false
     end
-    if next(rule_table) ~= nil then
-        --这个设备正在执行联动，策略停止执行
-        ngx.log(ngx.ERR,"linkage is running")
-        return false  --有联动在执行
+    if next(res) == nil then
+        ngx.log(ngx.ERR,"device id not exist")
+        return false
+    else
+		linkage_run = res[1]["linkage_rule"]
     end
-    return true  --没有联动
+    
+    ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
+    if linkage_run == 0 then
+        return false    --没有联动
+    else
+        ngx.log(ngx.INFO,"linkage is running")
+        return true     --有联动在执行
+    end
 end
 
 function m_exec_rule.clear_device_running(dev_type, dev_id)
@@ -205,7 +213,7 @@ local function exec_a_rule(rule_obj)
     else
         --检测联动是否在执行
         local rt = check_linkage_running(rule_obj["dev_type"], rule_obj["dev_id"])
-        if rt == false then
+        if rt == true then
             ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
             return false
         end
@@ -294,7 +302,7 @@ end
 --执行某个设备的策略
 function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     local rt = check_linkage_running(dev_type, dev_id)
-    if rt == false then
+    if rt == true then
         ngx.log(ngx.NOTICE,"linkage is running")
         return
     end

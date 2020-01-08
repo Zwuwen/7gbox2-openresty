@@ -110,13 +110,6 @@ function m_cmd_sync.insert_cmd_to_ruletable(cmd_json)
         return false
     end
 
-    --清除联动策略运行标志
-    local err = g_linkage_sync.update_linkage_running(dev_type, dev_id, 0)
-    if err == false then
-        ngx.log(ngx.ERR,"clear linkage running fail")
-        return false
-    end
-
     if next(qres) == nil then
         ngx.log(ngx.INFO,"insert new cmd to rule table")
         local res,err = g_sql_app.insert_rule_tbl(rule_table)
