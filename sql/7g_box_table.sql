@@ -1,3 +1,8 @@
+create user qj_box with password '7Gbox@sz1818#';
+create database qj_micro_db owner qj_box;
+grant all on database qj_micro_db to qj_box;
+\c qj_micro_db qj_box;
+
 create table micro_svr_tbl (
 	dev_type text primary key not null,
 	dev_type_ex text,
