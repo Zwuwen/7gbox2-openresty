@@ -11,7 +11,7 @@ M_sql_conf.database="qj_micro_db"
 --user
 M_sql_conf.user = "qj_box"
 --password
-M_sql_conf.password = "7Gbox!sz1818#"
+M_sql_conf.password = "7Gbox!sz1818"
 --compact
 M_sql_conf.compact=false
 --timeout
