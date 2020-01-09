@@ -85,6 +85,9 @@ end
 local function rule_engine_trigger(body)
     if body["Event"] == "StatusUpload" then
         local devices = body["Payload"]["Devices"]
+        if devices == nil then
+            return
+        end
         for key, value in pairs(devices) do
             local request_body = {}
             request_body["Event"] = "StatusUpload"
@@ -165,7 +168,6 @@ local function cmd_post(dev_cmd_list)
             local json_str = cjson.encode(cmd_obj)
             local res,ok = g_micro.micro_post(cmd_obj["DevType"],json_str)
         end
-
     end
 end
 
