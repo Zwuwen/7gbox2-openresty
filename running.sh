@@ -5,7 +5,7 @@ echo $PWD
 
 CONF=$PWD/7g_nginx_gw.conf
 NGINX=/usr/sbin/nginx
-PRIFIX=/usr/local/7g-box/openresty-svr/
+PRIFIX=/userdata/7g-box/openresty-svr/
 
 
 rm -rf logs/*
