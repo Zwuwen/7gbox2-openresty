@@ -53,7 +53,7 @@ local function linkage_stop_rule_running(dev_type, dev_id)
         return false
     end
     
-    if res == 0 then
+    if res ~= 1 then
         ngx.log(ngx.ERR,"linkage not running, exit")
         return false
     end

@@ -36,7 +36,7 @@ local function cmd_stop_rule_running(dev_type, dev_id)
         return false
     end
     
-    if res == 1 then
+    if res ~= 0 then
         ngx.log(ngx.ERR,"cmd not running, exit")
         return false
     end

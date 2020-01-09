@@ -144,11 +144,11 @@ local function check_linkage_running(dev_type, dev_id)
     end
     
     ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
-    if linkage_run == 0 then
-        return false    --没有联动
-    else
+    if linkage_run == 1 then
         ngx.log(ngx.INFO,"linkage is running")
-        return true     --有联动在执行
+        return true     --有联动在执行        
+    else
+        return false    --没有联动
     end
 end
 
@@ -168,11 +168,11 @@ local function check_cmd_running(dev_type, dev_id)
     end
     
     ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
-    if auto_mode == 1 then
-        return false    --自动模式
-    else
+    if auto_mode == 0 then
         ngx.log(ngx.INFO,"cmd is running")
-        return true     --手动模式
+        return true     --手动模式        
+    else
+        return false    --自动模式
     end
 end
 
