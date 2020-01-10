@@ -87,20 +87,24 @@ local function update_method()
 	else
 		--查询是否处于自动或者联动
 		result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
-		if result[1]["auto_mode"] == 0 and result[1]["linkage_rule"] == 0 then
-			--转发命令到微服务
-			if json_body["DevType"]~=nil and json_body["DevId"]~=nil and json_body["DevChannel"]~=nil and json_body["Method"]~=nil then
-				local res,status = g_micro.micro_post(json_body["DevType"],request_body)
-				message_pack(json_body,res)
+		if result[1] ~= nil then
+			if result[1]["auto_mode"] == 0 and result[1]["linkage_rule"] == 0 then
+				--转发命令到微服务
+				if json_body["DevType"]~=nil and json_body["DevId"]~=nil and json_body["DevChannel"]~=nil and json_body["Method"]~=nil then
+					local res,status = g_micro.micro_post(json_body["DevType"],request_body)
+					message_pack(json_body,res)
+				else
+					local res = creat_respone_message(400,"parameter is err")
+					message_pack(json_body,res)
+				end
 			else
-				local res = creat_respone_message(400,"parameter is err")
+				local res = creat_respone_message(400,"device is auto mode")
 				message_pack(json_body,res)
 			end
 		else
-			local res = creat_respone_message(400,"device is auto mode")
+			local res = creat_respone_message(400,"DevId error")
 			message_pack(json_body,res)
 		end
-		
 	end
 end
 
