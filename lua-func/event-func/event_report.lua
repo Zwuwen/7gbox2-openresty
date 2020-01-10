@@ -257,7 +257,9 @@ function event_report_M.platform_online_event(body)
         end
         local gw_message =  g_sql_app.query_dev_status_tbl(0)
         if gw_message[1] ~= nil then
-            local Attributes = gw_message[1]["Attributes"]
+            local attributes1 = gw_message[1]["attribute"]
+            local attributes_table = cjson.decode(attributes1)
+            local Attributes = attributes_table["Attributes"]
             Attributes["Online"] = 1
             Attributes["SN"] = gw["sn"]
             local Playload = {}
