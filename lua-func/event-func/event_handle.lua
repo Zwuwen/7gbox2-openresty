@@ -26,7 +26,7 @@ end
 -------------post method---------
 local function post_method()
     ngx.req.read_body()
-		local request_body = ngx.req.get_body_data()
+    local request_body = ngx.req.get_body_data()
     ngx.log(ngx.ERR,"micro post event: ",request_body)
     local body = cjson.decode(request_body)
     if body["Event"] == "ThingsOnline" then

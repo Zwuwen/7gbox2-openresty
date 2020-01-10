@@ -15,7 +15,7 @@ local function get_url_suffix(request_body)
         return "event"
     elseif body["Method"] == "CancleLinkageRule" then
         return "event"
-    elseif body["Payload"] ~= nil and body["Payload.RuleType"] == "LinkageRule" then
+    elseif body["Payload"] ~= nil and body["Payload"]["RuleType"] == "LinkageRule" then
         return "rule"
     else
         --设备微服务 命令存到redis,等待微服务执行结果确认

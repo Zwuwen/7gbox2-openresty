@@ -46,7 +46,7 @@ local function attribute_change_message(dev_type,dev_id,channel_id,status)
 	dev_dict["DevId"] = dev_id
 	local attr = {}
 	attr["AutoMode"] = status
-	dev_dict["Attribute"] = attr
+	dev_dict["Attributes"] = attr
 	local dev_list = {dev_dict}
 	local payload = {}
 	payload["Devices"] = dev_list

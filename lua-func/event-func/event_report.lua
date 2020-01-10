@@ -94,14 +94,21 @@ local function rule_engine_trigger(body)
             local rule_dev = {}
             rule_dev["DevType"] = value["DevType"]
             rule_dev["DevId"] = value["DevId"]
+            local attributes = value["Attributes"]
+            if attributes ~= nil then
+                rule_dev["Attributes"] = attributes
+            end
+
             local channels = value["Channels"]
-            for key1, value1 in pairs(channels) do
-                rule_dev["DevChannel"] = value1["Id"]
-                rule_dev["Attributes"] =value1["Attributes"]
-                request_body["Device"] = rule_dev
-                local request_str = cjson.encode(request_body)
-                ngx.log(ngx.ERR,"rule_engine_trigger: ",cjson.encode(body))
-                local result,status = g_micro.micro_post("RuleEngine",request_str)
+            if channels ~= nil then
+                for key1, value1 in pairs(channels) do
+                    rule_dev["DevChannel"] = value1["Id"]
+                    rule_dev["Attributes"] =value1["Attributes"]
+                    request_body["Device"] = rule_dev
+                    local request_str = cjson.encode(request_body)
+                    ngx.log(ngx.ERR,"rule_engine_trigger: ",cjson.encode(body))
+                    local result,status = g_micro.micro_post("RuleEngine",request_str)
+                end
             end
         end
     elseif body["Event"] == "AIAlarm" then
@@ -132,7 +139,6 @@ function event_report_M.method_respone(body)
             local json_str = g_dev_status.get_real_cmd_data(msg_id)
             if json_str~=nil then
                 g_dev_status.set_ack_cmd_data(msg_id)
-                g_cmd_sync.insert_cmd_to_ruletable(json_str)
             end
         end
     else
