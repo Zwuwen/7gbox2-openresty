@@ -18,7 +18,7 @@ function myhttp_M.request_url(url,method_str,body_str)
 		method = method_str,
 		body = body_str,
 		headers = {["Content-Type"] = "application/json"},
-		keepalive_timeout = 60,
+		keepalive_timeout = 5,
 		keepalive_pool = 10
 	})
 
