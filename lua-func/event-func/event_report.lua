@@ -51,7 +51,7 @@ function event_report_M.thing_online(devices)
         local attributes = {}
         attributes["Online"] = 1
         local result = g_sql_app.query_dev_status_tbl(dev_id)
-        attributes["AutoMod"] = result[1]["auto_mode"]
+        attributes["AutoMode"] = result[1]["auto_mode"]
         dev_dict["Attributes"] = attributes
         table.insert(dev_list,dev_dict)
     end
@@ -234,6 +234,7 @@ local function creat_device_message(dev_type,dev_id,methods)
             dev_dict["DevId"] = dev_id
             local attributes = {}
             attributes["Online"] = value.online
+            attributes["AutoMode"] = value.auto_mode
             dev_dict["Attributes"] = attributes
         end
     else
@@ -241,6 +242,7 @@ local function creat_device_message(dev_type,dev_id,methods)
         dev_dict["DevId"] = dev_id
         local attributes = {}
         attributes["Online"] = 0
+        attributes["AutoMode"] = value.auto_mode
         dev_dict["Attributes"] = attributes
     end
     return dev_dict
