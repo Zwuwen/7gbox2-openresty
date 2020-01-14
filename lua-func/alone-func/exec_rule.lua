@@ -293,6 +293,11 @@ function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
                 ngx.log(ngx.NOTICE,"rule is already running ")
             else
                 --执行策略
+                --ngx.update_time()
+                --ngx.log(ngx.INFO,"---------time1: ", ngx.now())
+                ngx.sleep(0.5)
+                --ngx.update_time()
+                --ngx.log(ngx.INFO,"---------time2: ", ngx.now())
                 local err = exec_a_rule(rule)
                 if err == false then
                     ngx.log(ngx.ERR,"exec rule fail ")

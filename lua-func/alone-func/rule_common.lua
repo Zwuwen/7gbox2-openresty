@@ -210,7 +210,7 @@ local function encode_http_downstream_param(rule_obj)
     math.randomseed(os.time())
 
     http_param_table["Token"]     = '7GBox_rule'
-    http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(10,99))
+    http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(100,999))
     http_param_table["DevType"]   = rule_obj["dev_type"]
     http_param_table["DevId"]     = rule_obj["dev_id"]
     http_param_table["DevChannel"]= rule_obj["dev_channel"]
@@ -230,6 +230,7 @@ function m_rule_common.exec_http_request(rule_obj)
     end
 
     local http_param_str = cjson.encode(http_param_table)
+    ngx.log(ngx.INFO,"time rule request msrv: ", rule_obj["dev_type"].." - "..http_param_str)
 
     local res, err = g_micro.micro_post(rule_obj["dev_type"], http_param_str)
     if err == false then
