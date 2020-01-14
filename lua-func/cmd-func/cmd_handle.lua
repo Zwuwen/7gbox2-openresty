@@ -17,9 +17,12 @@ end
 
 -----------------cmd update method-----------------
 local function creat_respone_message(result,descrip)
+	local payload={}
+	payload["Result"] = result
+	payload["Descrip"] = descrip
 	local message={}
-	message["Result"] = result
-	message["Descrip"] = descrip
+	message["Payload"] = payload
+	
 	return cjson.encode(message)
 end
 
