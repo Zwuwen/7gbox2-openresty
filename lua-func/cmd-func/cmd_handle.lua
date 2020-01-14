@@ -37,6 +37,20 @@ local function message_pack(json_body,res)
 	end
 end
 
+local function result_message_pack(json_body,res)
+	if json_body["MsgId"]~=nil then
+		local return_json = cjson.decode(res)
+		return_json["MsgId"] = json_body["MsgId"]
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ResultUpload"
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
+	else
+		ngx.say(res)
+	end
+end
+
 local function attribute_change_message(dev_type,dev_id,channel_id,status)
 	local json_dict = {}
 	json_dict["Token"] = "7GBox"
@@ -68,6 +82,7 @@ local function update_method()
 		g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 0)
 		local res = creat_respone_message(0,"Success")
 		message_pack(json_body,res)
+		result_message_pack(json_body,res)
 		local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],1)
 		g_event_report.attribute_change(message)
 	elseif json_body["Method"] == "ResetToManual" then
@@ -79,11 +94,13 @@ local function update_method()
 		g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 1)
 		local res = creat_respone_message(0,"Success")
 		message_pack(json_body,res)
+		result_message_pack(json_body,res)
 		local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],0)
 		g_event_report.attribute_change(message)
 	elseif json_body["Method"] == "CancleLinkageRule" then
 		local res,status = g_micro.micro_delete("RuleEngine",request_body)
 		message_pack(json_body,res)
+		result_message_pack(json_body,res)
 	else
 		--查询是否处于自动或者联动
 		result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
