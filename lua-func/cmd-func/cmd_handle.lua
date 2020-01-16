@@ -7,6 +7,8 @@ local cjson = require("cjson")
 local g_micro = require("cmd-func.cmd_micro")
 local g_event_report = require("event-func.event_report")
 local g_cmd_sync = require("alone-func.cmd_sync")
+local g_http = require("common.http.myhttp_M")
+
 
 -----------------cmd get method---------------------
 local function get_method()
@@ -31,7 +33,9 @@ local function message_pack(json_body,res)
 		local return_json = cjson.decode(res)
 		return_json["MsgId"] = json_body["MsgId"]
 		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
+		if gw ~= nil and gw[1] ~=nil then
+			return_json["GW"] = gw[1]["sn"]
+		end
 		return_json["Event"] = "ReqStsUpload"
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
@@ -42,15 +46,14 @@ end
 
 local function result_message_pack(json_body,res)
 	if json_body["MsgId"]~=nil then
+		local url = "http://127.0.0.1:8080/v0001/event"
 		local return_json = cjson.decode(res)
 		return_json["MsgId"] = json_body["MsgId"]
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
 		return_json["Event"] = "ResultUpload"
 		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-	else
-		ngx.say(res)
+		g_http.init()
+		g_http.request_url(url,"POST",res_str)
+		g_http.uninit()
 	end
 end
 
