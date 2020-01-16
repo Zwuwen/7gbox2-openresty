@@ -128,51 +128,52 @@ local function query_device_method(dev_type, dev_id, channel)
     return dev_method_array, dev_method_cnt
 end
 
---判断设备是否有联动在执行
-local function check_linkage_running(dev_type, dev_id)
+--
+local function check_dev_status(dev_type, dev_id, attr)
+    local svr_online = 0
     local linkage_run = 0
-    local res, err = g_sql_app.query_dev_status_tbl(dev_id)
-    if err then
-        ngx.log(ngx.ERR," ", res, err)
-        return false
-    end
-    if next(res) == nil then
-        ngx.log(ngx.ERR,"device id not exist")
-        return false
-    else
-		linkage_run = res[1]["linkage_rule"]
-    end
-    
-    ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
-    if linkage_run == 1 then
-        ngx.log(ngx.INFO,"linkage is running")
-        return true     --有联动在执行        
-    else
-        return false    --没有联动
-    end
-end
-
---判断设备是否在手动模式
-local function check_cmd_running(dev_type, dev_id)
     local auto_mode = 0
     local res, err = g_sql_app.query_dev_status_tbl(dev_id)
     if err then
         ngx.log(ngx.ERR," ", res, err)
-        return 0, false
+        return false
     end
     if next(res) == nil then
         ngx.log(ngx.ERR,"device id not exist")
-        return 0, false
+        return false
     else
-		auto_mode = res[1]["auto_mode"]
+        svr_online = res[1]["online"]
+        linkage_run= res[1]["linkage_rule"]
+        auto_mode  = res[1]["auto_mode"]
     end
     
-    ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
-    if auto_mode == 0 then
-        ngx.log(ngx.INFO,"cmd is running")
-        return true     --手动模式        
-    else
-        return false    --自动模式
+    if attr == "online" then
+        --判断微服务是否在线
+        ngx.log(ngx.INFO,"check svr_online: ", svr_online)
+        if svr_online == 1 then
+            ngx.log(ngx.INFO,"svr is online")
+            return true     --在线
+        else
+            return false    --离线
+        end
+    elseif attr == "linkage" then
+        --判断设备是否有联动在执行
+        ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
+        if linkage_run == 1 then
+            ngx.log(ngx.INFO,"linkage is running")
+            return true     --有联动在执行        
+        else
+            return false    --没有联动
+        end
+    elseif attr == "cmd" then
+        --判断设备是否在手动模式
+        ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
+        if auto_mode == 0 then
+            ngx.log(ngx.INFO,"cmd is running")
+            return true     --手动模式        
+        else
+            return false    --自动模式
+        end
     end
 end
 
@@ -231,14 +232,20 @@ end
 --执行策略
 local function exec_a_rule(rule_obj)
     --dump_rule(rule_obj)
+    --检测微服务是否在线
+    local rt = check_dev_status(rule_obj["dev_type"], rule_obj["dev_id"], "online")
+    if rt == false then
+        ngx.log(ngx.NOTICE,"srv is offline, ignore rule! ")
+        return false
+    end
     --检测联动是否在执行
-    local rt = check_linkage_running(rule_obj["dev_type"], rule_obj["dev_id"])
+    local rt = check_dev_status(rule_obj["dev_type"], rule_obj["dev_id"], "linkage")
     if rt == true then
         ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
         return false
     end
     --检测是否手动模式
-    local rt = check_cmd_running(rule_obj["dev_type"], rule_obj["dev_id"])
+    local rt = check_dev_status(rule_obj["dev_type"], rule_obj["dev_id"], "cmd")
     if rt == true then
         ngx.log(ngx.NOTICE,"cmd running, ignore rule! ")
         return false
@@ -329,17 +336,6 @@ end
 
 --执行某个设备的策略
 function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
-    local rt = check_linkage_running(dev_type, dev_id)
-    if rt == true then
-        ngx.log(ngx.NOTICE,"linkage is running")
-        return
-    end
-    local rt = check_cmd_running(dev_type, dev_id)
-    if rt == true then
-        ngx.log(ngx.NOTICE,"cmd is running")
-        return
-    end
-
     --执行设备策略
     local dev_channel_array, dev_channel_cnt = query_device_channel(dev_type, dev_id)
     --ngx.log(ngx.INFO,"device channel cnt: ", dev_channel_cnt.." ".."device channel list :", cjson.encode(dev_channel_array))
