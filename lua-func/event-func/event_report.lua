@@ -203,7 +203,6 @@ local function linkage_end(body)
         cmd_post(dev_cmd_list)
         --恢复模式
         g_linkage.linkage_start_stop_rule(nil,dev_id,0)
-        
     end
 end
 
@@ -219,6 +218,8 @@ function event_report_M.linkage_event(body)
     end
     playload["Out"] = nil
     body["Payload"] = playload
+    local gw = g_sql_app.query_dev_info_tbl(0)
+    body["GW"] = gw[1]["sn"]
     event_send_message(event_conf.url,cjson.encode(body))
 end
 
@@ -238,12 +239,7 @@ local function creat_device_message(dev_type,dev_id,methods)
             dev_dict["Attributes"] = attributes
         end
     else
-        dev_dict["DevType"] = dev_type
-        dev_dict["DevId"] = dev_id
-        local attributes = {}
-        attributes["Online"] = 0
-        attributes["AutoMode"] = value.auto_mode
-        dev_dict["Attributes"] = attributes
+        return nil
     end
     return dev_dict
 end
@@ -258,9 +254,11 @@ function event_report_M.platform_online_event(body)
         for key,device in pairs(res) do
             if device.dev_id > 0 then
                 local dev_dict = creat_device_message(device.dev_type,device.dev_id,device.ability_method)
-                table.insert(dev_list,dev_dict)
+                if dev_dict ~= nil then
+                    table.insert(dev_list,dev_dict)
+                end
             else
-                gw = device    
+                gw = device 
             end
         end
         local gw_message =  g_sql_app.query_dev_status_tbl(0)
