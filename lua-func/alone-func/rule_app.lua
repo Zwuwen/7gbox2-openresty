@@ -191,7 +191,7 @@ local function create_rule(req_payload)
 		g_exec_rule.exec_rules_by_method(json_obj["DevType"], json_obj["DevId"], json_obj["DevChannel"], json_obj["Method"])
 
 		--更新定时任务间隔
-		g_rule_timer.refresh_rule_timer()
+		--g_rule_timer.refresh_rule_timer()
 	end
 	
 	return "", true
@@ -246,7 +246,7 @@ local function delete_rule(req_payload)
 				g_exec_rule.exec_rules_by_method(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"], qres[1]["method"])
 
 				--更新定时任务间隔
-				g_rule_timer.refresh_rule_timer()
+				--g_rule_timer.refresh_rule_timer()
 			end
 		end
 	elseif method == 'DelByDevId' then
@@ -284,7 +284,7 @@ local function delete_rule(req_payload)
 		end		
 
 		--更新定时任务间隔
-		g_rule_timer.refresh_rule_timer()
+		--g_rule_timer.refresh_rule_timer()
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
 		return "delete rules, method error", false
@@ -344,7 +344,7 @@ local function update_rule(req_payload)
 		g_exec_rule.exec_rules_by_method(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"], qres[1]["method"])
 
 		--更新定时任务间隔
-		g_rule_timer.refresh_rule_timer()
+		--g_rule_timer.refresh_rule_timer()
 	end
 	
 	return "", true
@@ -414,7 +414,7 @@ local function select_rule(req_payload)
 				for j,w in ipairs(dev_table) do
 					dev_obj[j] = g_rule_common.db_attr_to_display(w)
 				end
-				f_rule_array[i] = dev_obj
+				table.insert(f_rule_array, dev_obj)
 			end	
 		end
 	else
@@ -579,6 +579,9 @@ local function create_rule_group(all_json)
 			end
 		end
 	end
+	--更新定时任务间隔
+	g_rule_timer.refresh_rule_timer()
+
 	return "", true
 end
 
@@ -641,6 +644,9 @@ local function delete_rule_group(all_json)
 		local sub_json = cjson.encode(sub_table)
 		ngx.log(ngx.INFO,"delete by UUID sub json: ", sub_json)
 		local res, err = delete_rule(sub_json)
+
+		--更新定时任务间隔
+		g_rule_timer.refresh_rule_timer()
 		return res, err
 	elseif payload["Method"] == "DelByDevId" then
 		local sub_table = {}
@@ -650,6 +656,9 @@ local function delete_rule_group(all_json)
 		local sub_json = cjson.encode(sub_table)
 		ngx.log(ngx.INFO,"delete by device sub json", sub_json)
 		local res, err = delete_rule(sub_json)
+
+		--更新定时任务间隔
+		g_rule_timer.refresh_rule_timer()
 		return res, err
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
@@ -763,7 +772,55 @@ local function update_rule_group(all_json)
 			end
 		end
 	end
+	--更新定时任务间隔
+	g_rule_timer.refresh_rule_timer()
+
 	return "", true
+end
+
+--一组子时间策略列表恢复成一个时间策略
+local function recover_rule_group(rule_tables)
+	local new_tables = {}
+	local uuid_set = {}
+
+	for i,rule_table in ipairs(rule_tables) do
+		--获取策略组真正的RuleUuid（去除前缀 后缀）
+		--目前一个设备时间策略的方法数是个位数，所以后缀减7就可以
+		local uuid = string.sub(rule_table["RuleUuid"], 4, string.len(rule_table["RuleUuid"])-7)
+		ngx.log(ngx.DEBUG,"recover time rule, next uuid: ", uuid)
+
+		if not g_rule_common.is_include(uuid, uuid_set) then
+			--新UUID，插入新策略
+			ngx.log(ngx.DEBUG,"insert new")
+			rule_table["RuleUuid"] = uuid
+			local tmp_actions = {}
+			tmp_actions["Method"] = rule_table["Method"]
+			tmp_actions["RuleParam"] = rule_table["RuleParam"]
+			rule_table["Actions"] = {}
+			table.insert(rule_table["Actions"], tmp_actions)
+			
+			table.insert(new_tables, rule_table)
+			table.insert(uuid_set, uuid)
+		else
+			--方法添加到已有策略
+			ngx.log(ngx.DEBUG,"add method")
+			for i,new_table in ipairs(new_tables) do
+				if new_table["RuleUuid"] == uuid then
+					local tmp_actions = {}
+					tmp_actions["Method"] = rule_table["Method"]
+					tmp_actions["RuleParam"] = rule_table["RuleParam"]
+					table.insert(new_table["Actions"], tmp_actions)
+				end
+			end
+		end
+	end
+
+	--删除子策略的Method,RuleParam
+	for i,new_table in ipairs(new_tables) do
+		new_table["Method"] = nil
+		new_table["RuleParam"] = nil
+	end
+	return new_tables
 end
 
 --查询策略组
@@ -771,7 +828,59 @@ local function select_rule_group(all_json)
 	local all_table = cjson.decode(all_json)
 	local payload = all_table["Payload"]
 
-	return "", true
+	--查询时间策略
+	--分解策略组rule_uuid到子UUID
+	if payload["Rules"] ~= nil then
+		local tmp_uuids = {}
+		for i,uuid in ipairs(payload["Rules"]) do
+			local sql_str = string.format("select * from run_rule_tbl where rule_uuid like \'7G-%s-time-%%\'", uuid)
+			local sub_rules,err = g_sql_app.query_table(sql_str)
+			if err then
+				ngx.log(ngx.ERR," ", sub_rules,err)
+				return err, false
+			end
+			if next(sub_rules) == nil then
+				--无
+			else
+				for i,sub_rule in ipairs(sub_rules) do
+					table.insert(tmp_uuids, sub_rule["rule_uuid"])
+				end
+			end
+		end
+
+		payload["Rules"] = nil
+		payload["Rules"] = tmp_uuids
+	end
+	local sub_table, err = select_rule(cjson.encode(payload))
+	if err == false then
+		ngx.log(ngx.ERR,"query time rule fail")
+		return sub_table, false
+	end
+
+	--合并rule group
+	local f_rule_array = {}
+	if payload["Rules"] ~= nil then
+		--uuid
+		f_rule_array = recover_rule_group(sub_table)
+	elseif payload["Devices"] ~= nil then
+		--dev
+		for i,dev_rule in ipairs(sub_table) do
+			local tmp_dev_rule = recover_rule_group(dev_rule)
+			table.insert(f_rule_array, tmp_dev_rule)
+		end
+	else
+		payload["RuleType"] = nil	--删除RuleType
+		if next(payload) == nil then
+			--body为空：获取全部策略
+			f_rule_array = recover_rule_group(sub_table)
+		else
+			ngx.log(ngx.ERR,"query method err")
+			return "query method err", false
+		end
+	end
+
+	ngx.log(ngx.ERR,"query payload: ", cjson.encode(f_rule_array))
+	return f_rule_array, true	
 end
 
 ---------------------------------------------------------------------------------
@@ -932,7 +1041,7 @@ if request_method == "GET" then
 	local data_table = {}
 	local data_str = ""
 	if payload_json["RuleType"] == "TimerRule" then
-		data_table, result = select_rule(request_body)
+		data_table, result = select_rule_group(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
 		local return_json = cjson.decode(data_str)
@@ -950,9 +1059,11 @@ if request_method == "GET" then
 	if result == false then
 		local json_str = encode_select_response(1, 'Failure', data_table)
 		ngx.say(json_str)
+		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
 		local json_str = encode_select_response(0, 'Success', data_table)
 		ngx.say(json_str)
+		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
 elseif request_method == "POST" then
 	local result = false
