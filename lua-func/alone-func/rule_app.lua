@@ -303,6 +303,15 @@ local function update_rule(req_payload)
 			return "please input rule uuid", false
 		end
 
+		if json_obj["Priority"] ~= nil then
+			if (json_obj["Priority"] < g_rule_common.time_priority_h or 
+				json_obj["Priority"] > g_rule_common.time_priority_l)
+			then
+				ngx.log(ngx.ERR,"time rule priority is 8~13")
+				return "time rule priority should be 8~13", false
+			end
+		end
+
 		for key,value in pairs(json_obj) do
 			local rt = is_key_exist(key)
 			if rt == false then
@@ -727,6 +736,16 @@ local function update_rule_group(all_json)
 					table.insert(sub_table["Rules"], tmp_rule_obj)
 	
 					for i,rule in ipairs(res) do
+						--清除该策略运行状态为0
+						local run_flag = {}
+						run_flag["Running"] = 0
+						local clr_res,err = g_sql_app.update_rule_tbl(rule["rule_uuid"], run_flag)
+						if err then
+							ngx.log(ngx.ERR," ",clr_res.."  err msg: ",err)
+							return "clear rule running false", false
+						end
+
+						--组装更新数据
 						sub_table["Rules"][1]["RuleUuid"] = rule["rule_uuid"]
 						sub_table["Rules"][1]["Method"] = action["Method"]
 						sub_table["Rules"][1]["RuleParam"] = action["RuleParam"]
