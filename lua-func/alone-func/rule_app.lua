@@ -18,6 +18,7 @@ local g_report_event = require("alone-func.rule_report_event")
 --local g_linkage_sync = require("alone-func.linkage_sync")
 local g_cmd_micro = require("cmd-func.cmd_micro")
 local report_event  = require("event-func.event_report")
+local g_dev_dft = require("alone-func.dev_default")
 --function define
 ---------------------------------------------------------------------------------
 --输入检查
@@ -656,6 +657,8 @@ local function delete_rule_group(all_json)
 
 		--更新定时任务间隔
 		g_rule_timer.refresh_rule_timer()
+
+		g_dev_dft.set_all_dev_dft()
 		return res, err
 	elseif payload["Method"] == "DelByDevId" then
 		local sub_table = {}
@@ -668,6 +671,8 @@ local function delete_rule_group(all_json)
 
 		--更新定时任务间隔
 		g_rule_timer.refresh_rule_timer()
+
+		g_dev_dft.set_all_dev_dft()
 		return res, err
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
@@ -793,6 +798,8 @@ local function update_rule_group(all_json)
 	end
 	--更新定时任务间隔
 	g_rule_timer.refresh_rule_timer()
+
+	local g_dev_dft = require("alone-func.dev_default")
 
 	return "", true
 end

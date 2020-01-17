@@ -6,6 +6,7 @@ local g_rule_common = require("alone-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
+local g_dev_dft = require("alone-func.dev_default")
 
 --function define
 ---------------------策略自动执行-----------------------------------
@@ -332,6 +333,18 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
         ngx.log(ngx.INFO,"exec rules in method: ",dev_method_array[i])
         m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, dev_method_array[i])
     end
+
+    --设置设备默认状态——dev当前时间无可执行策略时
+    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
+    local res,err = g_sql_app.query_table(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res,err)
+        return err, false
+    end
+    if next(res) == nil then
+        ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
+        g_dev_dft.set_dev_dft(dev_type, dev_id, channel)
+    end
 end
 
 --执行某个设备的策略
@@ -384,6 +397,9 @@ function m_exec_rule.exec_all_rules()
         --ngx.log(ngx.INFO,"select device in type: ",dev_type_array[i])
         m_exec_rule.exec_rules_by_type(dev_type_array[i])
     end
+
+    --设置设备默认状态——dev无策略时
+    g_dev_dft.set_all_dev_dft()
 end
 
 
