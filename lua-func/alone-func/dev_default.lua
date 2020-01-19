@@ -85,7 +85,7 @@ function m_dev_dft.set_dev_dft(dev_type, dev_id)
     end
     if next(res) == nil then
         ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
-        m_dev_dft.set_channel_dft(dev_type, dev_id, 1)  --如何获取全部channel
+        m_dev_dft.set_channel_dft(dev_type, dev_id, 1)  --濡備綍鑾峰彇鍏ㄩ儴channel
     end
     return "", true
 end
