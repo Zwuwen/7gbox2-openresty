@@ -343,7 +343,7 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
     end
     if next(res) == nil then
         ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
-        g_dev_dft.set_dev_dft(dev_type, dev_id, channel)
+        g_dev_dft.set_channel_dft(dev_type, dev_id, channel)
     end
 end
 

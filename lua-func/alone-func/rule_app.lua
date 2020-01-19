@@ -658,6 +658,7 @@ local function delete_rule_group(all_json)
 		--更新定时任务间隔
 		g_rule_timer.refresh_rule_timer()
 
+		--检查并设置所有设备默认状态
 		g_dev_dft.set_all_dev_dft()
 		return res, err
 	elseif payload["Method"] == "DelByDevId" then
@@ -672,7 +673,8 @@ local function delete_rule_group(all_json)
 		--更新定时任务间隔
 		g_rule_timer.refresh_rule_timer()
 
-		g_dev_dft.set_all_dev_dft()
+		--检查并设置设备默认状态
+		g_dev_dft.set_dev_dft(payload["DevType"], payload["DevId"])
 		return res, err
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
@@ -799,7 +801,8 @@ local function update_rule_group(all_json)
 	--更新定时任务间隔
 	g_rule_timer.refresh_rule_timer()
 
-	local g_dev_dft = require("alone-func.dev_default")
+	--检查并设置所有设备默认状态
+	g_dev_dft.set_all_dev_dft()
 
 	return "", true
 end
