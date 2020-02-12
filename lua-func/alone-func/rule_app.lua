@@ -915,10 +915,14 @@ end
 ---------------------------------------------------------------------------------
 ---------------------------生成请求的http响应数据--------------------------------
 ---------------------------------------------------------------------------------
-local function encode_insert_response(errcode, msg, data_table)
+local function encode_insert_response(msgid, errcode, msg, data_table)
 	local f_table = {}
 	local f_str = ''
 	
+	f_table["Token"] = "7GBox"
+	f_table["MsgId"] = msgid
+	f_table["Event"] = "ReqStsUpload"
+	f_table["GW"] = ""
 	local payload = {}
 	payload["Result"] = errcode
 	payload["Descrip"] = msg
@@ -930,10 +934,14 @@ local function encode_insert_response(errcode, msg, data_table)
 	return f_str
 end
 
-local function encode_update_response(errcode, msg, data_table)
+local function encode_update_response(msgid, errcode, msg, data_table)
 	local f_table = {}
 	local f_str = ''
 	
+	f_table["Token"] = "7GBox"
+	f_table["MsgId"] = msgid
+	f_table["Event"] = "ReqStsUpload"
+	f_table["GW"] = ""
 	local payload = {}
 	payload["Result"] = errcode
 	payload["Descrip"] = msg
@@ -945,10 +953,14 @@ local function encode_update_response(errcode, msg, data_table)
 	return f_str
 end
 
-local function encode_delete_response(errcode, msg, data_table)
+local function encode_delete_response(msgid, errcode, msg, data_table)
 	local f_table = {}
 	local f_str = ''
 	
+	f_table["Token"] = "7GBox"
+	f_table["MsgId"] = msgid
+	f_table["Event"] = "ReqStsUpload"
+	f_table["GW"] = ""
 	local payload = {}
 	payload["Result"] = errcode
 	payload["Descrip"] = msg
@@ -960,21 +972,26 @@ local function encode_delete_response(errcode, msg, data_table)
 	return f_str
 end
 
-local function encode_select_response(errcode, msg, data_table)
+local function encode_select_response(msgid, errcode, msg, data_table)
 	local f_table = {}
 	local f_str = ''
 	
+	f_table["Token"] = "7GBox"
+	f_table["MsgId"] = msgid
+	f_table["Event"] = "ReqStsUpload"
+	f_table["GW"] = ""
+
+	local payload = {}
 	if errcode == 0 then
 		--查询成功
-		f_table["Rules"] = data_table
+		payload["Rules"] = data_table
 	else
 		--查询失败
-		local payload = {}
 		payload["Result"] = errcode
 		payload["Descrip"] = msg
 		payload["Out"] = data_table
-		f_table["Payload"] = payload
 	end
+	f_table["Payload"] = payload
 	
 	f_str = cjson.encode(f_table)
 	--ngx.log(ngx.ERR," ", f_str)
@@ -1086,11 +1103,11 @@ if request_method == "GET" then
 		return
 	end
 	if result == false then
-		local json_str = encode_select_response(1, 'Failure', data_table)
+		local json_str = encode_select_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
-		local json_str = encode_select_response(0, 'Success', data_table)
+		local json_str = encode_select_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
@@ -1114,11 +1131,11 @@ elseif request_method == "POST" then
 	end
 
 	if result == false then
-		local json_str = encode_insert_response(1, 'Failure', data_table)
+		local json_str = encode_insert_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
-		local json_str = encode_insert_response(0, 'Success', data_table)
+		local json_str = encode_insert_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
@@ -1135,11 +1152,11 @@ elseif request_method == "PUT" then
 	end
 
 	if result == false then
-		local json_str = encode_update_response(1, 'Failure', data_table)
+		local json_str = encode_update_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
-		local json_str = encode_update_response(0, 'Success', data_table)
+		local json_str = encode_update_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
@@ -1163,11 +1180,11 @@ elseif request_method == "DELETE" then
 	end
 
 	if result == false then
-		local json_str = encode_delete_response(1, 'Failure', data_table)
+		local json_str = encode_delete_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
-		local json_str = encode_delete_response(0, 'Success', data_table)
+		local json_str = encode_delete_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
