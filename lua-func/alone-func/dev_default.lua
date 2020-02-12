@@ -56,6 +56,25 @@ local function set_speaker_dft(dev_type, dev_id, channel)
 end
 
 function m_dev_dft.set_channel_dft(dev_type, dev_id, channel)
+    --检测微服务是否在线
+    local rt = g_rule_common.check_dev_status(dev_type, dev_id, "online")
+    if rt == false then
+        ngx.log(ngx.NOTICE,"srv is offline, can not set default! ")
+        return "srv is offline, can not set default! ", false
+    end
+    --检测联动是否在执行
+    local rt = g_rule_common.check_dev_status(dev_type, dev_id, "linkage")
+    if rt == true then
+        ngx.log(ngx.NOTICE,"linkage rule running, can not set default! ")
+        return "linkage rule running, can not set default! ", false
+    end
+    --检测是否手动模式
+    local rt = g_rule_common.check_dev_status(dev_type, dev_id, "cmd")
+    if rt == true then
+        ngx.log(ngx.NOTICE,"cmd running, can not set default! ")
+        return "cmd running, can not set default! ", false
+    end
+
 
     if dev_type == "Lamp" then
         set_lamp_dft(dev_type, dev_id, channel)

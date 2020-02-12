@@ -185,6 +185,57 @@ function m_rule_common.get_next_loop_interval()
 end
 
 -------------------------------------------------------------------------------------
+--检查微服务状态
+-------------------------------------------------------------------------------------
+function m_rule_common.check_dev_status(dev_type, dev_id, attr)
+    local svr_online = 0
+    local linkage_run = 0
+    local auto_mode = 0
+    local res, err = g_sql_app.query_dev_status_tbl(dev_id)
+    if err then
+        ngx.log(ngx.ERR," ", res, err)
+        return false
+    end
+    if next(res) == nil then
+        ngx.log(ngx.ERR,"device id not exist")
+        return false
+    else
+        svr_online = res[1]["online"]
+        linkage_run= res[1]["linkage_rule"]
+        auto_mode  = res[1]["auto_mode"]
+    end
+    
+    if attr == "online" then
+        --判断微服务是否在线
+        ngx.log(ngx.INFO,"check svr_online: ", svr_online)
+        if svr_online == 1 then
+            ngx.log(ngx.INFO,"svr is online")
+            return true     --在线
+        else
+            return false    --离线
+        end
+    elseif attr == "linkage" then
+        --判断设备是否有联动在执行
+        ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
+        if linkage_run == 1 then
+            ngx.log(ngx.INFO,"linkage is running")
+            return true     --有联动在执行        
+        else
+            return false    --没有联动
+        end
+    elseif attr == "cmd" then
+        --判断设备是否在手动模式
+        ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
+        if auto_mode == 0 then
+            ngx.log(ngx.INFO,"cmd is running")
+            return true     --手动模式        
+        else
+            return false    --自动模式
+        end
+    end
+end
+
+-------------------------------------------------------------------------------------
 --请求http方法
 -------------------------------------------------------------------------------------
 --发起http请求
