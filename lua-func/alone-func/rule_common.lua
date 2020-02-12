@@ -225,8 +225,8 @@ end
 function m_rule_common.exec_http_request(rule_obj)
     local http_param_table = encode_http_downstream_param(rule_obj)
     if next(http_param_table["In"]) == nil then
-        ngx.log(ngx.ERR,"rule param error ")
-        return false
+        ngx.log(ngx.INFO,"rule param is nil")
+        --return false
     end
 
     local http_param_str = cjson.encode(http_param_table)
