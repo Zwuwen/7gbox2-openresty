@@ -9,6 +9,15 @@ local g_event_report = require("event-func.event_report")
 local g_cmd_sync = require("alone-func.cmd_sync")
 local g_http = require("common.http.myhttp_M")
 
+local timer_dev_timer_method = {};
+local lamp_timer_method = {"SetOnOff", "SetBrightness"}
+local info_screen_timer_method = {"SetOnOff", "LoadProgram", "SetBrightness", "SetVolume"}
+local ipc_onvif_timer_method = {"GotoPreset"}
+local speaker_timer_method = {"PlayProgram"}
+timer_dev_timer_method["Lamp"] = lamp_timer_method
+timer_dev_timer_method["InfoScreen"] = info_screen_timer_method
+timer_dev_timer_method["IPC-Onvif"] = ipc_onvif_timer_method
+timer_dev_timer_method["Speaker"] = speaker_timer_method
 
 -----------------cmd get method---------------------
 local function get_method()
@@ -74,6 +83,18 @@ local function attribute_change_message(dev_type,dev_id,channel_id,status)
 	return json_dict
 end
 
+local function is_timer_method(dev_type, method_name)
+	if timer_dev_timer_method[dev_type] ~= nil then
+		local method_table = timer_dev_timer_method[dev_type]
+		for i = 1, #method_table do
+			if method_table[i] == method_name then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function update_method()
 	--get request_body
 	ngx.req.read_body()
@@ -111,15 +132,15 @@ local function update_method()
 		--查询是否处于自动或者联动
 		result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
 		if result[1] ~= nil then
-			if result[1]["auto_mode"] == 0 and result[1]["linkage_rule"] == 0 then
+			if json_body["DevType"]==nil and json_body["DevId"]==nil and json_body["DevChannel"]==nil and json_body["Method"]==nil then
+				local res = creat_respone_message(400,"parameter is err")
+				message_pack(json_body,res)
+			end
+
+			if (result[1]["auto_mode"] == 0 or is_timer_method(json_body["DevType"] == false, json_body["Method"])) and result[1]["linkage_rule"] == 0 then
 				--转发命令到微服务
-				if json_body["DevType"]~=nil and json_body["DevId"]~=nil and json_body["DevChannel"]~=nil and json_body["Method"]~=nil then
-					local res,status = g_micro.micro_post(json_body["DevType"],request_body)
-					message_pack(json_body,res)
-				else
-					local res = creat_respone_message(400,"parameter is err")
-					message_pack(json_body,res)
-				end
+				local res,status = g_micro.micro_post(json_body["DevType"],request_body)
+				message_pack(json_body,res)
 			else
 				local res = creat_respone_message(400,"device is auto mode")
 				message_pack(json_body,res)
