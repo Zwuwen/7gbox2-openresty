@@ -256,10 +256,9 @@ end
 --请求微服务方法
 -------------------------------------------------------------------------------------
 --打包HTTP请求数据
+math.randomseed(tostring(os.time()):reverse():sub(1, 7))
 local function encode_http_downstream_param(rule_obj)
     local http_param_table = {}
-    math.randomseed(os.time())
-
     http_param_table["Token"]     = '7GBox_rule'
     http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(100,999))
     http_param_table["DevType"]   = rule_obj["dev_type"]
