@@ -225,7 +225,7 @@ end
 
 
 --------------------------平台状态改变------------------------------------
-local function creat_device_message(dev_type,dev_id,methods)
+local function creat_device_message(dev_type,dev_id,sn,methods)
     local dev_dict = {}
     local res,err = g_sql_app.query_dev_status_tbl(dev_id)
     if res then
@@ -236,6 +236,7 @@ local function creat_device_message(dev_type,dev_id,methods)
             local attributes = {}
             attributes["Online"] = value.online
             attributes["AutoMode"] = value.auto_mode
+            attributes["SN"] = sn
             dev_dict["Attributes"] = attributes
         end
     else
@@ -253,7 +254,7 @@ function event_report_M.platform_online_event(body)
         local res,err = g_sql_app.query_all_dev_info_tbl()
         for key,device in pairs(res) do
             if device.dev_id > 0 then
-                local dev_dict = creat_device_message(device.dev_type,device.dev_id,device.ability_method)
+                local dev_dict = creat_device_message(device.dev_type,device.dev_id,device.sn,device.ability_method)
                 if dev_dict ~= nil then
                     table.insert(dev_list,dev_dict)
                 end
@@ -270,7 +271,7 @@ function event_report_M.platform_online_event(body)
             Attributes["SN"] = gw["sn"]
             local Playload = {}
             Playload["Attributes"] = Attributes
-            Playload["Methods"] = gw_message["Methods"]
+            Playload["Methods"] = attributes_table["Methods"]
             Playload["Devices"] = dev_list
             local message = {}
             message["Token"] = "7GBox"
