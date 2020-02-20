@@ -137,7 +137,7 @@ local function update_method()
 				message_pack(json_body,res)
 			end
 
-			if (result[1]["auto_mode"] == 0 or is_timer_method(json_body["DevType"] == false, json_body["Method"])) and result[1]["linkage_rule"] == 0 then
+			if (result[1]["auto_mode"] == 0 or is_timer_method(json_body["DevType"], json_body["Method"]) == false) and result[1]["linkage_rule"] == 0 then
 				--转发命令到微服务
 				local res,status = g_micro.micro_post(json_body["DevType"],request_body)
 				message_pack(json_body,res)
