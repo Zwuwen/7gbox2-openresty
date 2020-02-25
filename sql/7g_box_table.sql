@@ -69,3 +69,11 @@ create table program_info_tbl (
 	program_md5 text not null,
 	download_time timestamp(0)
 );
+create table devops_rule_tbl (
+	rule_uuid text not null primary key,
+	start_date date not null,
+	end_date date not null,
+	start_time time not null,
+	end_time time not null,
+	rule text not null,
+);
