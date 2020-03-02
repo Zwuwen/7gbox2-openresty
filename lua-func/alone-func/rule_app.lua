@@ -922,7 +922,8 @@ local function encode_insert_response(msgid, errcode, msg, data_table)
 	f_table["Token"] = "7GBox"
 	f_table["MsgId"] = msgid
 	f_table["Event"] = "ReqStsUpload"
-	f_table["GW"] = ""
+	local gw = g_sql_app.query_dev_info_tbl(0)
+	f_table["GW"] = gw[1]["sn"]
 	local payload = {}
 	payload["Result"] = errcode
 	payload["Descrip"] = msg
@@ -941,7 +942,8 @@ local function encode_update_response(msgid, errcode, msg, data_table)
 	f_table["Token"] = "7GBox"
 	f_table["MsgId"] = msgid
 	f_table["Event"] = "ReqStsUpload"
-	f_table["GW"] = ""
+	local gw = g_sql_app.query_dev_info_tbl(0)
+	f_table["GW"] = gw[1]["sn"]
 	local payload = {}
 	payload["Result"] = errcode
 	payload["Descrip"] = msg
@@ -960,7 +962,8 @@ local function encode_delete_response(msgid, errcode, msg, data_table)
 	f_table["Token"] = "7GBox"
 	f_table["MsgId"] = msgid
 	f_table["Event"] = "ReqStsUpload"
-	f_table["GW"] = ""
+	local gw = g_sql_app.query_dev_info_tbl(0)
+	f_table["GW"] = gw[1]["sn"]
 	local payload = {}
 	payload["Result"] = errcode
 	payload["Descrip"] = msg
@@ -979,7 +982,8 @@ local function encode_select_response(msgid, errcode, msg, data_table)
 	f_table["Token"] = "7GBox"
 	f_table["MsgId"] = msgid
 	f_table["Event"] = "ReqStsUpload"
-	f_table["GW"] = ""
+	local gw = g_sql_app.query_dev_info_tbl(0)
+	f_table["GW"] = gw[1]["sn"]
 
 	local payload = {}
 	if errcode == 0 then
