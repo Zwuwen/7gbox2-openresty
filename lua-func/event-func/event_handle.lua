@@ -47,7 +47,7 @@ local function post_method()
     elseif body["Event"] == "PlatStatus" then
         --平台上线下线事件
         g_event_report.platform_online_event(body)
-    elseif body["Event"] == "AIAlarm" then
+    elseif body["Event"] == "Alarm" then
         --AI事件
         g_event_report.attribute_change(body)
     else
