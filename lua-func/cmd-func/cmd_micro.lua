@@ -26,7 +26,6 @@ end
 
 function cmd_micro_M.get_mico_url(svr_type,request_body)
     local res, err = g_sql_app.query_micro_svr_tbl(svr_type)
-    print("#######err: ",err)
     if res then
         for key, value in ipairs(res) do
             local url_prefix = string.gsub(value["url_prefix"], "%s+", "")
