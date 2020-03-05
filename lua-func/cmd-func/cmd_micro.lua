@@ -73,6 +73,7 @@ end
 
 function cmd_micro_M.micro_post(svr_type,request_body)
     local res,ok = micro_cmd_exec(svr_type,request_body, "POST")
+    ngx.log(ngx.INFO, "cmd_micro_M.micro_post return: ",res)
     return res,ok
 end
 
