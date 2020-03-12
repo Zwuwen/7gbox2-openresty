@@ -75,5 +75,5 @@ create table devops_rule_tbl (
 	end_date date not null,
 	start_time time not null,
 	end_time time not null,
-	rule text not null,
+	rule text not null
 );
