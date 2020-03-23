@@ -105,25 +105,38 @@ local function update_method()
 		local update_json = {}
 		update_json["auto_mode"] = 1
 		update_json["online"] = 1
-		g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
-		g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 0)
-		local res = creat_respone_message(0,"Success")
-		message_pack(json_body,res)
-		result_message_pack(json_body,res)
-		local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],1)
-		g_event_report.attribute_change(message)
+		g_sql_app.query_dev_info_tbl(json_body["DevId"])
+		if result[1]["dev_type"] == json_body["DevType"] then
+			g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
+			g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 0)
+			local res = creat_respone_message(0,"Success")
+			message_pack(json_body,res)
+			result_message_pack(json_body,res)
+			local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],1)
+			g_event_report.attribute_change(message)
+		else
+			local res = creat_respone_message(1,"Fail")
+			message_pack(json_body,res)
+			result_message_pack(json_body,res)
+		end
 	elseif json_body["Method"] == "ResetToManual" then
 		--命令切换手动
 		local update_json = {}
 		update_json["auto_mode"] = 0
 		update_json["online"] = 1
-		g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
-		g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 1)
-		local res = creat_respone_message(0,"Success")
-		message_pack(json_body,res)
-		result_message_pack(json_body,res)
-		local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],0)
-		g_event_report.attribute_change(message)
+		result = g_sql_app.query_dev_info_tbl(json_body["DevId"])
+		if result[1]["dev_type"] == json_body["DevType"] then
+			g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 1)
+			local res = creat_respone_message(0,"Success")
+			message_pack(json_body,res)
+			result_message_pack(json_body,res)
+			local message = attribute_change_message(json_body["DevType"],json_body["DevId"],json_body["DevChannel"],0)
+			g_event_report.attribute_change(message)
+		else
+			local res = creat_respone_message(1,"Fail")
+			message_pack(json_body,res)
+			result_message_pack(json_body,res)
+		end
 	elseif json_body["Method"] == "CancleLinkageRule" then
 		local res,status = g_micro.micro_delete("RuleEngine",request_body)
 		message_pack(json_body,res)
