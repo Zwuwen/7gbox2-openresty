@@ -295,7 +295,6 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
     end
     if next(res) == nil then
         --设备设置了时间策略，但是当前时间没有可执行策略，设为默认状态
-        ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
         g_dev_dft.set_channel_dft(dev_type, dev_id, channel)
     end
 end
@@ -309,6 +308,8 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     if next(dev_channel_array) == nil
     then
         ngx.log(ngx.NOTICE,"has no channel")
+        --从联动或手动模式恢复后没有时间策略时设置默认
+        g_dev_dft.set_dev_dft(dev_type, dev_id)
         return-------------
     end
 
@@ -343,6 +344,7 @@ function m_exec_rule.exec_all_rules()
     if next(dev_type_array) == nil
     then
         ngx.log(ngx.NOTICE,"has no type")
+        g_dev_dft.set_all_dev_dft()
         return-------------
     end
 

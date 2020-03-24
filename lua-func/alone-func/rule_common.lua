@@ -207,16 +207,16 @@ function m_rule_common.check_dev_status(dev_type, dev_id, attr)
     
     if attr == "online" then
         --判断微服务是否在线
-        ngx.log(ngx.INFO,"check svr_online: ", svr_online)
+        --ngx.log(ngx.INFO,"check svr_online: ", svr_online)
         if svr_online == 1 then
-            ngx.log(ngx.INFO,"svr is online")
             return true     --在线
         else
+            ngx.log(ngx.INFO,"svr is offline")
             return false    --离线
         end
     elseif attr == "linkage" then
         --判断设备是否有联动在执行
-        ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
+        --ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
         if linkage_run == 1 then
             ngx.log(ngx.INFO,"linkage is running")
             return true     --有联动在执行        
@@ -225,7 +225,7 @@ function m_rule_common.check_dev_status(dev_type, dev_id, attr)
         end
     elseif attr == "cmd" then
         --判断设备是否在手动模式
-        ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
+        --ngx.log(ngx.INFO,"check auto_mode: ", auto_mode)
         if auto_mode == 0 then
             ngx.log(ngx.INFO,"cmd is running")
             return true     --手动模式        

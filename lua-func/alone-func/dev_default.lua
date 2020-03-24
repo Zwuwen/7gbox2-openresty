@@ -75,7 +75,7 @@ function m_dev_dft.set_channel_dft(dev_type, dev_id, channel)
         return "cmd running, can not set default! ", false
     end
 
-
+    ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
     if dev_type == "Lamp" then
         set_lamp_dft(dev_type, dev_id, channel)
     elseif dev_type == "InfoScreen" then
@@ -92,7 +92,10 @@ function m_dev_dft.set_channel_dft(dev_type, dev_id, channel)
 end
 
 function m_dev_dft.set_dev_dft(dev_type, dev_id)
-    if dev_type == "GW" then
+    if dev_type == "AI" or
+        dev_type == "GW" or
+        dev_type == "Configure"
+    then
         return "", true
     end
 
@@ -103,7 +106,7 @@ function m_dev_dft.set_dev_dft(dev_type, dev_id)
         return err, false
     end
     if next(res) == nil then
-        ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
+        --ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.." to default status")
         m_dev_dft.set_channel_dft(dev_type, dev_id, 1)  --如何获取全部channel
     end
     return "", true
@@ -118,7 +121,7 @@ function m_dev_dft.set_all_dev_dft()
     end
     if next(devices) ~= nil then
         for i,device in ipairs(devices) do
-            ngx.log(ngx.INFO,"check "..device["dev_type"].."-"..device["dev_id"].." is/not default status")
+            --ngx.log(ngx.INFO,"check "..device["dev_type"].."-"..device["dev_id"].." is/not default status")
             m_dev_dft.set_dev_dft(device["dev_type"], device["dev_id"])
         end
     end
