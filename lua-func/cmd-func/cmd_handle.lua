@@ -126,6 +126,7 @@ local function update_method()
 		update_json["online"] = 1
 		result = g_sql_app.query_dev_info_tbl(json_body["DevId"])
 		if result[1]["dev_type"] == json_body["DevType"] then
+			g_sql_app.update_dev_status_tbl(json_body["DevId"],update_json)
 			g_cmd_sync.cmd_start_stop_rule(json_body["DevType"],json_body["DevId"], 1)
 			local res = creat_respone_message(0,"Success")
 			message_pack(json_body,res)
