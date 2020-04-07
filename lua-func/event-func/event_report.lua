@@ -111,7 +111,7 @@ local function rule_engine_trigger(body)
                 end
             end
         end
-    elseif body["Event"] == "AIAlarm" then
+    elseif body["Event"] == "Alarm" then
         local request_str = cjson.encode(body)
         ngx.log(ngx.ERR,"rule_engine_trigger: ",cjson.encode(body))
         local result,status = g_micro.micro_post("RuleEngine",request_str)

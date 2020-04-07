@@ -11,7 +11,7 @@ local function get_url_suffix(request_body)
     local body = cjson.decode(request_body)
     if body["Event"] == "StatusUpload" then
         return "event"
-    elseif body["Event"] == "AIAlarm" then
+    elseif body["Event"] == "Alarm" then
         return "event"
     elseif body["Method"] == "CancleLinkageRule" then
         return "event"
