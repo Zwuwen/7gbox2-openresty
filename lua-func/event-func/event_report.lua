@@ -170,7 +170,8 @@ local function cmd_post(dev_cmd_list)
     for k,cmd_obj in pairs(dev_cmd_list) do
         cmd_obj["MsgId"] = nil
         cmd_obj["TimeStamp"] = nil
-        if string.find(cmd_obj["Method"], "Reboot", 1) == nil or string.find(cmd_obj["Method"], "ScreenShot", 1) == nil then
+        if (cmd_obj["Method"] ~= "Reboot") and (cmd_obj["Method"] ~= "ScreenShot") then
+        --if string.find(cmd_obj["Method"], "Reboot", 1) == nil or string.find(cmd_obj["Method"], "ScreenShot", 1) == nil then
             local json_str = cjson.encode(cmd_obj)
             local res,ok = g_micro.micro_post(cmd_obj["DevType"],json_str)
         end
