@@ -78,6 +78,6 @@ create table devops_rule_tbl (
 	rule text not null
 );
 create table dev_ability_tbl (
-	dev_id text not null primary key,
+	dev_id int not null primary key,
 	ability text not null
 );
