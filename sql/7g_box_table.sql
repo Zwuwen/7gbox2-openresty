@@ -24,6 +24,7 @@ create table dev_info_tbl (
 	dev_type text not null,
 	interface_type text not null,
 	manufacturer_id int not null,
+	pdu_port int not null,
 	sn text,
 	ability_method text,
 	ability_attribute text
