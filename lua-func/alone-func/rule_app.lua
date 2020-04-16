@@ -1077,13 +1077,14 @@ if type(payload_json["RuleType"]) ~= "string" then
 	ngx.say(json_str)
 	return
 end
-if payload_json["RuleType"] ~= "TimerRule" and payload_json["RuleType"] ~= "LinkageRule" then
+if payload_json["RuleType"] ~= "TimerRule" and payload_json["RuleType"] ~= "LinkageRule" and payload_json["RuleType"] ~= "DevopsRule" then
 	ngx.log(ngx.ERR,"rule type error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"rule type error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
 	return
 end
 local linkage_ser = "RuleEngine"
+local devops_ser = "DevopsEngine"
 
 --exec
 if request_method == "GET" then
@@ -1094,6 +1095,19 @@ if request_method == "GET" then
 		data_table, result = select_rule_group(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
+		return_json["Event"] = "ResultUpload"
+		report_event.method_respone(return_json)
+		return
+	elseif payload_json["RuleType"] == "DevopsRule" then
+		data_str, result = g_cmd_micro.micro_get(devops_ser,request_body)
 		local return_json = cjson.decode(data_str)
 		local gw = g_sql_app.query_dev_info_tbl(0)
 		return_json["GW"] = gw[1]["sn"]
@@ -1132,6 +1146,17 @@ elseif request_method == "POST" then
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
 		return
+	elseif payload_json["RuleType"] == "DevopsRule" then
+		data_str, result = g_cmd_micro.micro_post(devops_ser,request_body)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
+		return
 	end
 
 	if result == false then
@@ -1153,6 +1178,10 @@ elseif request_method == "PUT" then
 		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
 		ngx.say(data_str)
 		return
+	elseif payload_json["RuleType"] == "DevopsRule" then
+		data_str, result = g_cmd_micro.micro_put(devops_ser,request_body)
+		ngx.say(data_str)
+		return
 	end
 
 	if result == false then
@@ -1172,6 +1201,17 @@ elseif request_method == "DELETE" then
 		data_table, result = delete_rule_group(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
+		return
+	elseif payload_json["RuleType"] == "DevopsRule" then
+		data_str, result = g_cmd_micro.micro_delete(devops_ser,request_body)
 		local return_json = cjson.decode(data_str)
 		local gw = g_sql_app.query_dev_info_tbl(0)
 		return_json["GW"] = gw[1]["sn"]
