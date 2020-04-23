@@ -22,6 +22,7 @@ create table dev_status_tbl (
 create table dev_info_tbl (
 	dev_id serial primary key not null,
 	dev_type text not null,
+	dev_model text not null,
 	interface_type text not null,
 	manufacturer_id int not null,
 	pdu_port int not null,
