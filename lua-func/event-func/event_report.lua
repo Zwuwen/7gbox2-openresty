@@ -48,6 +48,9 @@ function event_report_M.thing_online(devices)
         local dev_dict = cjson.decode(device_object)
         dev_dict["DevType"] = dev_type
         dev_dict["DevId"] = dev_id
+        local dev_info = g_sql_app.query_dev_info_tbl(dev_id)
+        ngx.log(ngx.ERR,"################################################model= ",dev_info[1]["dev_model"])
+        dev_dict["DevModel"] = dev_info[1]["dev_model"]
         local attributes = {}
         attributes["Online"] = 1
         local result = g_sql_app.query_dev_status_tbl(dev_id)
@@ -226,7 +229,7 @@ end
 
 
 --------------------------平台状态改变------------------------------------
-local function creat_device_message(dev_type,dev_id,sn,methods)
+local function creat_device_message(dev_type,dev_id,sn,dev_model,methods)
     local dev_dict = {}
     local res,err = g_sql_app.query_dev_status_tbl(dev_id)
     if res then
@@ -234,6 +237,7 @@ local function creat_device_message(dev_type,dev_id,sn,methods)
             dev_dict = cjson.decode(value.attribute)
             dev_dict["DevType"] = dev_type
             dev_dict["DevId"] = dev_id
+            dev_dict["DevModel"] = dev_model
             local attributes = {}
             attributes["Online"] = value.online
             attributes["AutoMode"] = value.auto_mode
@@ -255,7 +259,7 @@ function event_report_M.platform_online_event(body)
         local res,err = g_sql_app.query_all_dev_info_tbl()
         for key,device in pairs(res) do
             if device.dev_id > 0 then
-                local dev_dict = creat_device_message(device.dev_type,device.dev_id,device.sn,device.ability_method)
+                local dev_dict = creat_device_message(device.dev_type,device.dev_id,device.sn,device.dev_model,device.ability_method)
                 if dev_dict ~= nil then
                     table.insert(dev_list,dev_dict)
                 end
