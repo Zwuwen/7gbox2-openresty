@@ -53,6 +53,7 @@ function event_report_M.thing_online(devices)
         dev_dict["DevModel"] = dev_info[1]["dev_model"]
         local attributes = {}
         attributes["Online"] = 1
+        attributes["SN"] = dev_info[1]["sn"]
         local result = g_sql_app.query_dev_status_tbl(dev_id)
         attributes["AutoMode"] = result[1]["auto_mode"]
         dev_dict["Attributes"] = attributes
@@ -73,8 +74,10 @@ function event_report_M.thing_offline(devices)
         g_exec_rule.clear_device_running(dev_type, dev_id)
 
         --上报属性
+        local dev_info = g_sql_app.query_dev_info_tbl(dev_id)
         local attributes = {}
         attributes["Online"] = 0
+        attributes["SN"] = dev_info[1]["sn"]
         value["Attributes"] = attributes
         table.insert(dev_list,value)
     end
