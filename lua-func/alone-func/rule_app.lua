@@ -1193,12 +1193,26 @@ elseif request_method == "PUT" then
 		data_table, result = update_rule_group(request_body)
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
-		ngx.say(data_str)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
 		ngx.flush()
 		return
 	elseif payload_json["RuleType"] == "DevopsRule" then
 		data_str, result = g_cmd_micro.micro_put(devops_ser,request_body)
-		ngx.say(data_str)
+		local return_json = cjson.decode(data_str)
+		local gw = g_sql_app.query_dev_info_tbl(0)
+		return_json["GW"] = gw[1]["sn"]
+		return_json["Event"] = "ReqStsUpload"
+		local json_body = cjson.decode(request_body)
+		return_json["MsgId"] = json_body["MsgId"]
+		local res_str = cjson.encode(return_json)
+		ngx.say(res_str)
 		ngx.flush()
 		return
 	end
