@@ -103,32 +103,6 @@ local function query_device_channel(dev_type, dev_id)
     return dev_channel_array, dev_channel_cnt
 end
 
---获取dev某个channel的所有method
-local function query_device_method(dev_type, dev_id, channel)
-    local dev_method_table,err = g_sql_app.query_rule_tbl_for_method(dev_type, dev_id, channel)
-    if err then
-        ngx.log(ngx.ERR," ",dev_method_table.."  err msg: ",err)
-        return {},0--for next(table)
-    end
-
-    local dev_method_array = {}
-    local dev_method_cnt = 0
-
-    if next(dev_method_table) == nil
-    then
-        --ngx.log(ngx.INFO,"method null")
-    else
-        --ngx.log(ngx.INFO,"has method")
-        -- i=1,2,3...
-        for i,w in ipairs(dev_method_table) do
-            dev_method_array[i] = w["btrim"]--method
-            dev_method_cnt = i
-        end
-    end
-
-    return dev_method_array, dev_method_cnt
-end
-
 --
 function m_exec_rule.clear_device_running(dev_type, dev_id)
     local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
@@ -164,7 +138,7 @@ end
 --更新策略运行状态
 local function update_rule_run_status(rule_obj)
     --清除该method所有策略的running为0
-    local res,err = g_sql_app.update_rule_tbl_running(rule_obj["dev_type"], rule_obj["dev_id"], rule_obj["dev_channel"], rule_obj["method"], 0)
+    local res,err = g_sql_app.update_rule_tbl_running(rule_obj["dev_type"], rule_obj["dev_id"], rule_obj["dev_channel"], 0)
     if err then
         ngx.log(ngx.ERR," ",res.."  err msg: ",err)
         return false
@@ -183,7 +157,7 @@ local function update_rule_run_status(rule_obj)
 end
 
 --执行策略
-local function exec_a_rule(rule_obj)
+local function exec_a_method(rule_obj)
     --dump_rule(rule_obj)
     --检测微服务是否在线
     local rt = g_rule_common.check_dev_status(rule_obj["dev_type"], rule_obj["dev_id"], "online")
@@ -226,18 +200,18 @@ local function exec_a_rule(rule_obj)
 end
 
 --执行设备某个channel某个method的策略
-function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
+function m_exec_rule.exec_rules_in_channel(dev_type, dev_id, channel)
     --选择最优的一条策略
-    local ruletable, err = g_sql_app.query_rule_tbl_by_method(dev_type, dev_id, channel, method)
+    local ruletable, err = g_sql_app.query_rule_tbl_by_channel(dev_type, dev_id, channel)
     if err then
         ngx.log(ngx.ERR,"select rule error: ", err)
         return false
     end
 
     if next(ruletable) == nil then
-        --method当前时间没有可执行的策略，清除该method所有策略的running为0
+        --channel当前时间没有可执行的策略，清除该channel所有策略的running为0
         ngx.log(ngx.NOTICE,"no rules available to exec ")
-        local res,err = g_sql_app.update_rule_tbl_running(dev_type, dev_id, channel, method, 0)
+        local res,err = g_sql_app.update_rule_tbl_running(dev_type, dev_id, channel, 0)
         if err then
             ngx.log(ngx.ERR," ",res.."  err msg: ",err)
             return false
@@ -245,23 +219,23 @@ function m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, method)
     else
         for i,rule in ipairs(ruletable) do
             ngx.log(ngx.INFO,"exec time rule: uuid=", rule["rule_uuid"])
-            --去除字符串首尾空格
-            rule = g_rule_common.db_str_trim(rule)
 
             if (rule["running"] == 1) then
                 --策略已经在执行
                 ngx.log(ngx.NOTICE,"rule is already running ")
             else
                 --执行策略
-                --ngx.update_time()
-                --ngx.log(ngx.INFO,"---------time1: ", ngx.now())
-                ngx.sleep(0.5)
-                --ngx.update_time()
-                --ngx.log(ngx.INFO,"---------time2: ", ngx.now())
-                local err = exec_a_rule(rule)
-                if err == false then
-                    ngx.log(ngx.ERR,"exec rule fail ")
-                    return false
+                local actions = cjson.decode(rule["actions"])
+                for i,action in ipairs(actions) do
+                    rule["method"] = action["Method"]
+                    rule["rule_param"] = cjson.encode(action["RuleParam"])
+
+                    --
+                    local err = exec_a_method(rule)
+                    if err == false then
+                        ngx.log(ngx.ERR,"exec rule fail ")
+                        return false
+                    end
                 end
             end
         end
@@ -272,19 +246,7 @@ end
 
 --执行设备某个channel的策略
 function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
-    local dev_method_array, dev_method_cnt = query_device_method(dev_type, dev_id, channel)
-    ngx.log(ngx.INFO,"device method cnt: ", dev_method_cnt.." ".."device method list :", cjson.encode(dev_method_array))
-
-    if next(dev_method_array) == nil
-    then
-        ngx.log(ngx.NOTICE,"has no method")
-        return-------------
-    end
-
-    for i=1,dev_method_cnt do
-        ngx.log(ngx.INFO,"exec rules in method: ",dev_method_array[i])
-        m_exec_rule.exec_rules_by_method(dev_type, dev_id, channel, dev_method_array[i])
-    end
+    m_exec_rule.exec_rules_in_channel(dev_type, dev_id, channel)
 
     --设置设备默认状态——dev当前时间无可执行策略时
     local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
@@ -314,7 +276,7 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     end
 
     for i=1,dev_channel_cnt do
-        --ngx.log(ngx.INFO,"select method in channel: ",dev_channel_array[i])
+        --ngx.log(ngx.INFO,"select rules in channel: ",dev_channel_array[i])
         m_exec_rule.exec_rules_by_channel(dev_type, dev_id, dev_channel_array[i])
     end
 end

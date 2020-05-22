@@ -189,7 +189,7 @@ local function create_rule(req_payload)
 		end
 
 		--执行一次该方法的策略
-		g_exec_rule.exec_rules_by_method(json_obj["DevType"], json_obj["DevId"], json_obj["DevChannel"], json_obj["Method"])
+		g_exec_rule.exec_rules_in_channel(json_obj["DevType"], json_obj["DevId"], json_obj["DevChannel"])
 
 		--更新定时任务间隔
 		--g_rule_timer.refresh_rule_timer()
@@ -203,7 +203,7 @@ local function delete_rule(req_payload)
 	local json_param = cjson.decode(req_payload)
 
 	local method = json_param["Method"]
-	local payload = json_param["Payload"]
+	local payload = json_param
 
 	if (method == nil) then
 		ngx.log(ngx.ERR,"Method key err")
@@ -218,6 +218,11 @@ local function delete_rule(req_payload)
 		if (payload["Rules"] == nil) then
 			ngx.log(ngx.ERR,"Rules key err")
 			return "Rules key err", false
+		else
+			if type(payload["Rules"]) ~= "table" then
+				ngx.log(ngx.ERR,"Rules type err")
+				return "Rules type err", false
+			end
 		end
 		for i,uuid in ipairs(payload["Rules"]) do
 			if type(uuid) ~= "string" then
@@ -244,7 +249,7 @@ local function delete_rule(req_payload)
 
 				--执行一次该方法的策略
 				qres[1] = g_rule_common.db_str_trim(qres[1])
-				g_exec_rule.exec_rules_by_method(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"], qres[1]["method"])
+				g_exec_rule.exec_rules_in_channel(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
 
 				--更新定时任务间隔
 				--g_rule_timer.refresh_rule_timer()
@@ -351,7 +356,7 @@ local function update_rule(req_payload)
 
 		--执行一次该方法的策略
 		qres[1] = g_rule_common.db_str_trim(qres[1])
-		g_exec_rule.exec_rules_by_method(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"], qres[1]["method"])
+		g_exec_rule.exec_rules_in_channel(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
 
 		--更新定时任务间隔
 		--g_rule_timer.refresh_rule_timer()
@@ -454,7 +459,7 @@ local function select_rule(req_payload)
 		end
 	end
 
-	ngx.log(ngx.ERR,"query payload: ", cjson.encode(f_rule_array))
+	--ngx.log(ngx.ERR,"query payload: ", cjson.encode(f_rule_array))
 	return f_rule_array, true
 end
 
@@ -500,7 +505,7 @@ local function create_rule_group(all_json)
 		if rule_obj["DevType"] == "Lamp" then
 			rule_group = {"SetOnOff", "SetBrightness"}
 		elseif rule_obj["DevType"] == "InfoScreen" then
-			rule_group = {"SetOnOff", "LoadProgram", "SetBrightness", "SetVolume"}
+			rule_group = {"SetOnOff", "LoadProgram", "SetBrightness", "SetVolume"}-----------------------------------------
 		elseif rule_obj["DevType"] == "IPC-Onvif" then
 			rule_group = {"GotoPreset"}
 		elseif rule_obj["DevType"] == "Speaker" then
@@ -548,45 +553,13 @@ local function create_rule_group(all_json)
 			return "rule group method too much", false
 		end
 
-		--query
-		local sql_str = string.format("select * from run_rule_tbl where rule_uuid like \'7G-%s-time-%%\'", rule_obj["RuleUuid"])
-		local res,err = g_sql_app.query_table(sql_str)
-		if err then
-			ngx.log(ngx.ERR," ", res,err)
-			return err, false
-		end
-		if next(res) ~= nil then
-			ngx.log(ngx.ERR,"rule exist")
-			return "rule exist", false
-		end
-
 		--插入策略
-		local tmp_payload = {}
-		local tmp_rule = {}
-		tmp_rule["DevType"]    = rule_obj["DevType"]
-		tmp_rule["DevId"]      = rule_obj["DevId"]
-		tmp_rule["DevChannel"] = rule_obj["DevChannel"]
-		tmp_rule["Priority"]   = rule_obj["Priority"]
-		tmp_rule["StartDate"]  = rule_obj["StartDate"]
-		tmp_rule["EndDate"]    = rule_obj["EndDate"]
-		tmp_rule["StartTime"]  = rule_obj["StartTime"]
-		tmp_rule["EndTime"]    = rule_obj["EndTime"]
-
-		for i,action in ipairs(rule_obj["Actions"]) do
-			tmp_rule["RuleUuid"]  = "7G-"..rule_obj["RuleUuid"].."-time-"..tostring(i)	--生成子uuid
-			tmp_rule["Method"]    = action["Method"]
-			tmp_rule["RuleParam"] = action["RuleParam"]
-			tmp_payload["RuleType"] = payload["RuleType"]
-			tmp_payload["Rules"] = {}
-			table.insert(tmp_payload["Rules"], tmp_rule)
-
-			local tmp_rule_json = cjson.encode(tmp_payload)
-			ngx.log(ngx.INFO,"insert sub json: ", tmp_rule_json)
-			local res,err = create_rule(tmp_rule_json)
-			if err == false then
-				ngx.log(ngx.ERR,"insert rule fail")
-				return res, false
-			end
+		local tmp_rule_json = cjson.encode(payload)
+		ngx.log(ngx.INFO,"insert sub json: ", tmp_rule_json)
+		local res,err = create_rule(tmp_rule_json)
+		if err == false then
+			ngx.log(ngx.ERR,"insert rule fail")
+			return res, false
 		end
 	end
 	--更新定时任务间隔
@@ -604,75 +577,23 @@ local function delete_rule_group(all_json)
 	end
 
 	local payload = all_table["Payload"]
-	if (payload["Method"] == nil) then
-		ngx.log(ngx.ERR,"Method key err")
-		return "Method key err", false
+
+	local sub_json = cjson.encode(payload)
+	ngx.log(ngx.INFO,"delete rule sub json: ", sub_json)
+	local res, err = delete_rule(sub_json)
+	if err == false then
+		ngx.log(ngx.ERR,"delete rule fail")
+		return res, false
 	end
 
+	--更新定时任务间隔
+	g_rule_timer.refresh_rule_timer()
+
 	if payload["Method"] == "DelByRuleUuid" then
-		if (payload["Rules"] == nil) then
-			ngx.log(ngx.ERR,"Rules key err")
-			return "Rules key err", false
-		else
-			if type(payload["Rules"]) ~= "table" then
-				ngx.log(ngx.ERR,"Rules type err")
-				return "Rules type err", false
-			end
-		end
-
-		--获取所有要删除的UUID
-		local uuid_group = {}
-		for i,rule_uuid in ipairs(payload["Rules"]) do
-			if type(rule_uuid) ~= "string" then
-				ngx.log(ngx.ERR,"RuleUuid type err")
-				return "RuleUuid type err", false
-			end
-
-			local sql_str = string.format("select * from run_rule_tbl where rule_uuid like \'7G-%s-time-%%\'", rule_uuid)
-			local res,err = g_sql_app.query_table(sql_str)
-			if err then
-				ngx.log(ngx.ERR," ", res,err)
-				return err, false
-			end
-			if next(res) == nil then
-				ngx.log(ngx.ERR,"rule not exist")
-				return "rule not exist", false
-			end
-		
-			for i,rule in ipairs(res) do
-				table.insert(uuid_group, rule["rule_uuid"])
-			end
-		end
-
-		--删除
-		local sub_rules = {}
-		sub_rules["Rules"] = uuid_group
-		local sub_table = {}
-		sub_table["Method"] = payload["Method"]
-		sub_table["Payload"] = sub_rules
-
-		local sub_json = cjson.encode(sub_table)
-		ngx.log(ngx.INFO,"delete by UUID sub json: ", sub_json)
-		local res, err = delete_rule(sub_json)
-
-		--更新定时任务间隔
-		g_rule_timer.refresh_rule_timer()
-
 		--检查并设置所有设备默认状态
 		g_dev_dft.set_all_dev_dft()
 		return res, err
 	elseif payload["Method"] == "DelByDevId" then
-		local sub_table = {}
-		sub_table["Method"] = payload["Method"]
-		sub_table["Payload"] = payload
-
-		local sub_json = cjson.encode(sub_table)
-		ngx.log(ngx.INFO,"delete by device sub json", sub_json)
-		local res, err = delete_rule(sub_json)
-
-		--更新定时任务间隔
-		g_rule_timer.refresh_rule_timer()
-
 		--检查并设置设备默认状态
 		g_dev_dft.set_dev_dft(payload["DevType"], payload["DevId"])
 		return res, err
@@ -694,22 +615,15 @@ local function update_rule_group(all_json)
 	end
 	for i,rule_obj in ipairs(payload["Rules"]) do
 		--检查json第一层
-		if (rule_obj["RuleUuid"] == nil) then
-			ngx.log(ngx.ERR,"please input rule uuid")
-			return "please input rule uuid", false
-		end
-
 		local res,err = check_rule_input(rule_obj)
 		if err == false then
 			ngx.log(ngx.ERR," ", res)
 			return res, false
 		end
-
 		
 		if (rule_obj["Actions"] ~= nil) and
 		next(rule_obj["Actions"]) ~= nil
 		then
-			--有Actions，单独更新按方法分解的每一条
 			--检查json第二层
 			for i,action in ipairs(rule_obj["Actions"]) do
 				if (action["Method"] == nil) then
@@ -725,77 +639,14 @@ local function update_rule_group(all_json)
 					ngx.log(ngx.ERR," ", res)
 					return res, false
 				end
-
-				--查询该method策略的rule_uuid
-				local sql_str = string.format("select * from run_rule_tbl where rule_uuid like \'7G-%s-time-%%\' and method=\'%s\'", rule_obj["RuleUuid"], action["Method"])
-				local res,err = g_sql_app.query_table(sql_str)
-				if err then
-					ngx.log(ngx.ERR," ", res,err)
-					return err, false
-				end
-				if next(res) == nil then
-					ngx.log(ngx.ERR,"rule not exist")
-					return "rule not exist", false
-				else
-					local sub_table = {}
-					sub_table["Rules"] = {}
-					local tmp_rule_obj = g_rule_common.table_clone(rule_obj)
-					table.insert(sub_table["Rules"], tmp_rule_obj)
-	
-					for i,rule in ipairs(res) do
-						--清除该策略运行状态为0
-						local run_flag = {}
-						run_flag["Running"] = 0
-						local clr_res,err = g_sql_app.update_rule_tbl(rule["rule_uuid"], run_flag)
-						if err then
-							ngx.log(ngx.ERR," ",clr_res.."  err msg: ",err)
-							return "clear rule running false", false
-						end
-
-						--组装更新数据
-						sub_table["Rules"][1]["RuleUuid"] = rule["rule_uuid"]
-						sub_table["Rules"][1]["Method"] = action["Method"]
-						sub_table["Rules"][1]["RuleParam"] = action["RuleParam"]
-	
-						local sub_json = cjson.encode(sub_table)
-						ngx.log(ngx.INFO,"update sub json: ", sub_json)
-						local res,err = update_rule(sub_json)
-						if err == false then
-							ngx.log(ngx.ERR,"update rule fail")
-							return res, false
-						end
-					end
-				end
 			end			
-		else
-			--无Actions，只更新各分解策略的公共信息
-			local sql_str = string.format("select * from run_rule_tbl where rule_uuid like \'7G-%s-time-%%\'", rule_obj["RuleUuid"])
-			local res,err = g_sql_app.query_table(sql_str)
-			if err then
-				ngx.log(ngx.ERR," ", res,err)
-				return err, false
-			end
-			if next(res) == nil then
-				ngx.log(ngx.ERR,"rule not exist")
-				return "rule not exist", false
-			else
-				local sub_table = {}
-				sub_table["Rules"] = {}
-				local tmp_rule_obj = g_rule_common.table_clone(rule_obj)
-				table.insert(sub_table["Rules"], tmp_rule_obj)
+		end
 
-				for i,rule in ipairs(res) do
-					sub_table["Rules"][1]["RuleUuid"] = rule["rule_uuid"]
-
-					local sub_json = cjson.encode(sub_table)
-					ngx.log(ngx.INFO,"update sub json: ", sub_json)
-					local res,err = update_rule(sub_json)
-					if err == false then
-						ngx.log(ngx.ERR,"update rule fail")
-						return res, false
-					end
-				end
-			end
+		--更新
+		local res,err = update_rule(cjson.encode(payload))
+		if err == false then
+			ngx.log(ngx.ERR,"update rule fail")
+			return res, false
 		end
 	end
 	--更新定时任务间隔
@@ -807,105 +658,16 @@ local function update_rule_group(all_json)
 	return "", true
 end
 
---一组子时间策略列表恢复成一个时间策略
-local function recover_rule_group(rule_tables)
-	local new_tables = {}
-	local uuid_set = {}
-
-	for i,rule_table in ipairs(rule_tables) do
-		--获取策略组真正的RuleUuid（去除前缀 后缀）
-		--目前一个设备时间策略的方法数是个位数，所以后缀减7就可以
-		local uuid = string.sub(rule_table["RuleUuid"], 4, string.len(rule_table["RuleUuid"])-7)
-		ngx.log(ngx.DEBUG,"recover time rule, next uuid: ", uuid)
-
-		if not g_rule_common.is_include(uuid, uuid_set) then
-			--新UUID，插入新策略
-			ngx.log(ngx.DEBUG,"insert new")
-			rule_table["RuleUuid"] = uuid
-			local tmp_actions = {}
-			tmp_actions["Method"] = rule_table["Method"]
-			tmp_actions["RuleParam"] = rule_table["RuleParam"]
-			rule_table["Actions"] = {}
-			table.insert(rule_table["Actions"], tmp_actions)
-			
-			table.insert(new_tables, rule_table)
-			table.insert(uuid_set, uuid)
-		else
-			--方法添加到已有策略
-			ngx.log(ngx.DEBUG,"add method")
-			for i,new_table in ipairs(new_tables) do
-				if new_table["RuleUuid"] == uuid then
-					local tmp_actions = {}
-					tmp_actions["Method"] = rule_table["Method"]
-					tmp_actions["RuleParam"] = rule_table["RuleParam"]
-					table.insert(new_table["Actions"], tmp_actions)
-				end
-			end
-		end
-	end
-
-	--删除子策略的Method,RuleParam
-	for i,new_table in ipairs(new_tables) do
-		new_table["Method"] = nil
-		new_table["RuleParam"] = nil
-	end
-	return new_tables
-end
-
 --查询策略组
 local function select_rule_group(all_json)
 	local all_table = cjson.decode(all_json)
 	local payload = all_table["Payload"]
 
 	--查询时间策略
-	--分解策略组rule_uuid到子UUID
-	if payload["Rules"] ~= nil then
-		local tmp_uuids = {}
-		for i,uuid in ipairs(payload["Rules"]) do
-			local sql_str = string.format("select * from run_rule_tbl where rule_uuid like \'7G-%s-time-%%\'", uuid)
-			local sub_rules,err = g_sql_app.query_table(sql_str)
-			if err then
-				ngx.log(ngx.ERR," ", sub_rules,err)
-				return err, false
-			end
-			if next(sub_rules) == nil then
-				--无
-			else
-				for i,sub_rule in ipairs(sub_rules) do
-					table.insert(tmp_uuids, sub_rule["rule_uuid"])
-				end
-			end
-		end
-
-		payload["Rules"] = nil
-		payload["Rules"] = tmp_uuids
-	end
-	local sub_table, err = select_rule(cjson.encode(payload))
+	local f_rule_array, err = select_rule(cjson.encode(payload))
 	if err == false then
 		ngx.log(ngx.ERR,"query time rule fail")
-		return sub_table, false
-	end
-
-	--合并rule group
-	local f_rule_array = {}
-	if payload["Rules"] ~= nil then
-		--uuid
-		f_rule_array = recover_rule_group(sub_table)
-	elseif payload["Devices"] ~= nil then
-		--dev
-		for i,dev_rule in ipairs(sub_table) do
-			local tmp_dev_rule = recover_rule_group(dev_rule)
-			table.insert(f_rule_array, tmp_dev_rule)
-		end
-	else
-		payload["RuleType"] = nil	--删除RuleType
-		if next(payload) == nil then
-			--body为空：获取全部策略
-			f_rule_array = recover_rule_group(sub_table)
-		else
-			ngx.log(ngx.ERR,"query method err")
-			return "query method err", false
-		end
+		return f_rule_array, false
 	end
 
 	ngx.log(ngx.ERR,"query payload: ", cjson.encode(f_rule_array))

@@ -353,9 +353,8 @@ function g_orm_info_M.insert_rule_tbl(json)
 		json["DevType"]==nil or  
 	  	json["DevId"]==nil or								  
 		json["DevChannel"]==nil or
-		json["Method"]==nil or
 		json["Priority"]==nil or
-		json["RuleParam"]==nil or
+		json["Actions"]==nil or
 		json["StartTime"]==nil or
 		json["EndTime"]==nil or
 		json["StartDate"]==nil or
@@ -364,20 +363,19 @@ function g_orm_info_M.insert_rule_tbl(json)
 			ngx.log(ngx.ERR,"input param incomplete")
 			return nil,"input param incomplete"
 		end
-	local paraStr = cjson.encode(json["RuleParam"]);
-	local value_str = string.format("(\'%s\',\'%s\',%d,%d,\'%s\',%d,\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')",
+	local actionsStr = cjson.encode(json["Actions"]);
+	local value_str = string.format("(\'%s\',\'%s\',%d,%d,%d,\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')",
 									  json["RuleUuid"],
 									  json["DevType"],  
 					  				  json["DevId"],								  
 									  json["DevChannel"],
-									  json["Method"],
 									  json["Priority"],
-									  paraStr,
+									  actionsStr,
 									  json["StartTime"],
 									  json["EndTime"],
 									  json["StartDate"],
 									  json["EndDate"])
-	local res,err = db:execute("insert into run_rule_tbl (rule_uuid,dev_type,dev_id,dev_channel,method,priority,rule_param,start_time,end_time,start_date,end_date) values "..value_str)
+	local res,err = db:execute("insert into run_rule_tbl (rule_uuid,dev_type,dev_id,dev_channel,priority,actions,start_time,end_time,start_date,end_date) values "..value_str)
 	return res,err
 end
 
@@ -393,14 +391,6 @@ function g_orm_info_M.delete_rule_tbl_by_dev_id(dev_type, dev_id)
 	local dev_type_str = string.format("\'%s\'",dev_type)
 	local dev_id_str = string.format("%d", dev_id)
 	local res,err = db:execute("delete from run_rule_tbl where dev_type="..dev_type_str.." and dev_id="..dev_id_str)
-	return res,err
-end
-
---  删除
-function g_orm_info_M.delete_rule_tbl_by_method(dev_type, dev_id, channel, method, priority)
-	local sql_str = string.format("delete from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and method=\'%s\' and priority=%d",dev_type, dev_id, channel, method, priority)
-	--ngx.log(ngx.ERR," ",sql_str)
-	local res,err = db:execute(sql_str)
 	return res,err
 end
 
@@ -420,17 +410,13 @@ function g_orm_info_M.update_rule_tbl(rule_uuid, json)
 		sql_str = string.format( "%s dev_channel=%d,", sql_str, json["DevChannel"])
 	end
 
-	if json["Method"] ~= nil then
-		sql_str = string.format( "%s method=\'%s\',", sql_str, json["Method"])
-	end
-
 	if json["Priority"] ~= nil then
 		sql_str = string.format( "%s priority=%d,", sql_str, json["Priority"])
 	end
 
-	if json["RuleParam"] ~= nil then
-		local para_str = cjson.encode(json["RuleParam"])
-		sql_str = string.format( "%s rule_param=\'%s\',", sql_str, para_str)
+	if json["Actions"] ~= nil then
+		local para_str = cjson.encode(json["Actions"])
+		sql_str = string.format( "%s actions=\'%s\',", sql_str, para_str)
 	end
 
 	if json["StartTime"] ~= nil then
@@ -506,25 +492,17 @@ function g_orm_info_M.query_rule_tbl_for_channel(dev_type, dev_id)
 	return res,err
 end
 
---策略执行  根据dev_type和dev_id和channel获取channel下所有method
-function g_orm_info_M.query_rule_tbl_for_method(dev_type, dev_id, channel)
-	local sql_str = string.format("select distinct trim(method) from run_rule_tbl where trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d", dev_type, dev_id, channel)
-	--ngx.log(ngx.ERR," ",sql_str)
-	local res,err = db:query(sql_str)
-	return res,err
-end
-
 --策略执行  获取最优策略
-function g_orm_info_M.query_rule_tbl_by_method(dev_type, dev_id, channel, method)
-	local sql_str = string.format("select * from (select * from run_rule_tbl where (trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d and trim(method)=\'%s\' and start_date<=current_date and current_date<=end_date))  as result_date where ((start_time<=current_time and current_time<end_time) or (start_time>=end_time and ((start_time<=current_time and current_time<'24:00:00' and current_date!=end_date) or ('00:00:00'<=current_time and current_time<end_time and current_date!=start_date)))) order by priority ASC,start_time DESC,id ASC limit 1", dev_type, dev_id, channel, method)
+function g_orm_info_M.query_rule_tbl_by_channel(dev_type, dev_id, channel)
+	local sql_str = string.format("select * from (select * from run_rule_tbl where (trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d and start_date<=current_date and current_date<=end_date))  as result_date where ((start_time<=current_time and current_time<end_time) or (start_time>=end_time and ((start_time<=current_time and current_time<'24:00:00' and current_date!=end_date) or ('00:00:00'<=current_time and current_time<end_time and current_date!=start_date)))) order by priority ASC,start_time DESC,id ASC limit 1", dev_type, dev_id, channel)
 	--ngx.log(ngx.ERR," ",sql_str)
 	local res,err = db:query(sql_str)
 	return res,err
 end
 
---策略执行  更新method的running
-function g_orm_info_M.update_rule_tbl_running(dev_type, dev_id, channel, method, running)
-	local sql_str = string.format("update run_rule_tbl set running=%d where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and method=\'%s\'", running, dev_type, dev_id, channel, method)
+--策略执行  更新channel的running
+function g_orm_info_M.update_rule_tbl_running(dev_type, dev_id, channel, running)
+	local sql_str = string.format("update run_rule_tbl set running=%d where dev_type=\'%s\' and dev_id=%d and dev_channel=%d", running, dev_type, dev_id, channel)
 	ngx.log(ngx.INFO," ", sql_str)
 	local res,err = db:execute(sql_str)
 	return res,err

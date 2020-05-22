@@ -56,13 +56,13 @@ create table run_rule_tbl(
 	dev_type text not null,
 	dev_id int not null,
 	dev_channel int not null,
-	method text not null,
 	priority int not null,
-	rule_param json not null,
+	actions json not null,
 	start_time time not null,
 	end_time time not null,
 	start_date date not null,
 	end_date date not null,
+	is_dft int not null default(0),
 	running int not null default(0)
 );
 create table program_info_tbl (

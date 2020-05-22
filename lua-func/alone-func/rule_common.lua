@@ -27,17 +27,15 @@ function m_rule_common.db_attr_to_display(src_obj)
 	dst_obj["DevType"]   = src_obj["dev_type"]
 	dst_obj["DevId"]	 = src_obj["dev_id"]
 	dst_obj["DevChannel"]= src_obj["dev_channel"]
-	dst_obj["Method"]    = src_obj["method"]
 	dst_obj["Priority"]  = src_obj["priority"]
-
-	dst_obj["RuleParam"] = src_obj["rule_param"]
+	dst_obj["Actions"] = src_obj["actions"]
 	dst_obj["StartTime"] = src_obj["start_time"]
 	dst_obj["EndTime"]   = src_obj["end_time"]
 	dst_obj["StartDate"] = src_obj["start_date"]
     dst_obj["EndDate"]   = src_obj["end_date"]
 	dst_obj["Running"]   = src_obj["running"]
 
-	dst_obj["RuleParam"] = cjson.decode(dst_obj["RuleParam"])
+	dst_obj["Actions"] = cjson.decode(dst_obj["Actions"])
 	
 	return dst_obj
 end
@@ -46,7 +44,6 @@ end
 function m_rule_common.db_str_trim(rule_obj)
     rule_obj["rule_uuid"]  = string.gsub(rule_obj["rule_uuid"], "%s+", "")
     rule_obj["dev_type"]   = string.gsub(rule_obj["dev_type"], "%s+", "")
-    rule_obj["method"]     = string.gsub(rule_obj["method"], "%s+", "")
     
     return rule_obj
 end
@@ -58,9 +55,6 @@ function m_rule_common.http_str_trim(rule_obj)
     end
     if rule_obj["DevType"] ~= nil then
         rule_obj["DevType"]   = string.gsub(rule_obj["DevType"], "%s+", "")
-    end
-    if rule_obj["Method"] ~= nil then
-        rule_obj["Method"]    = string.gsub(rule_obj["Method"], "%s+", "")
     end
 
     return rule_obj
