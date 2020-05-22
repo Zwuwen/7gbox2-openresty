@@ -1010,6 +1010,7 @@ local request_method = ngx.var.request_method
 if request_method ~= "GET" and request_method ~= "POST" and request_method ~= "DELETE" and request_method ~= "PUT" then
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"method no support\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 
@@ -1018,12 +1019,14 @@ local uri_sub = string.sub(uri,rule_pre_index,rule_post_index)
 if uri_sub ~= "/v0001/rule" then
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"uri prefix is error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 
 if #uri ~= uri_len then
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"uri len is error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 
@@ -1040,6 +1043,7 @@ else
 	ngx.log(ngx.ERR,"json format error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"json format error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 
@@ -1048,6 +1052,7 @@ if all_json["Token"] ~= nil then
 		ngx.log(ngx.ERR,"Token type err")
 		local json_str = '{\n\"errcode\":400,\n \"msg\":\"Token type err\",\n\"payload\":{}\n}'
 		ngx.say(json_str)
+		ngx.flush()
 		return
 	end
 end
@@ -1057,6 +1062,7 @@ if all_json["MsgId"] ~= nil then
 		ngx.log(ngx.ERR,"MsgId type err")
 		local json_str = '{\n\"errcode\":400,\n \"msg\":\"MsgId type err\",\n\"payload\":{}\n}'
 		ngx.say(json_str)
+		ngx.flush()
 		return
 	end
 end
@@ -1066,6 +1072,7 @@ if all_json["Payload"] == nil then
 	ngx.log(ngx.ERR,"Rule body has no Payload")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"Rule body has no Payload\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 
@@ -1075,12 +1082,14 @@ if type(payload_json["RuleType"]) ~= "string" then
 	ngx.log(ngx.ERR,"RuleType type err")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"RuleType type err\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 if payload_json["RuleType"] ~= "TimerRule" and payload_json["RuleType"] ~= "LinkageRule" and payload_json["RuleType"] ~= "DevopsRule" then
 	ngx.log(ngx.ERR,"rule type error")
 	local json_str = '{\n\"errcode\":400,\n \"msg\":\"rule type error\",\n\"payload\":{}\n}'
 	ngx.say(json_str)
+	ngx.flush()
 	return
 end
 local linkage_ser = "RuleEngine"
@@ -1103,6 +1112,7 @@ if request_method == "GET" then
 		return_json["MsgId"] = json_body["MsgId"]
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
+		ngx.flush()
 		return_json["Event"] = "ResultUpload"
 		report_event.method_respone(return_json)
 		return
@@ -1116,6 +1126,7 @@ if request_method == "GET" then
 		return_json["MsgId"] = json_body["MsgId"]
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
+		ngx.flush()
 		return_json["Event"] = "ResultUpload"
 		report_event.method_respone(return_json)
 		return
@@ -1123,10 +1134,12 @@ if request_method == "GET" then
 	if result == false then
 		local json_str = encode_select_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
 		local json_str = encode_select_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
 elseif request_method == "POST" then
@@ -1145,6 +1158,7 @@ elseif request_method == "POST" then
 		return_json["MsgId"] = json_body["MsgId"]
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
+		ngx.flush()
 		return
 	elseif payload_json["RuleType"] == "DevopsRule" then
 		data_str, result = g_cmd_micro.micro_post(devops_ser,request_body)
@@ -1156,16 +1170,19 @@ elseif request_method == "POST" then
 		return_json["MsgId"] = json_body["MsgId"]
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
+		ngx.flush()
 		return
 	end
 
 	if result == false then
 		local json_str = encode_insert_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
 		local json_str = encode_insert_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
 elseif request_method == "PUT" then
@@ -1177,20 +1194,24 @@ elseif request_method == "PUT" then
 	elseif payload_json["RuleType"] == "LinkageRule" then
 		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
 		ngx.say(data_str)
+		ngx.flush()
 		return
 	elseif payload_json["RuleType"] == "DevopsRule" then
 		data_str, result = g_cmd_micro.micro_put(devops_ser,request_body)
 		ngx.say(data_str)
+		ngx.flush()
 		return
 	end
 
 	if result == false then
 		local json_str = encode_update_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
 		local json_str = encode_update_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
 elseif request_method == "DELETE" then
@@ -1209,6 +1230,7 @@ elseif request_method == "DELETE" then
 		return_json["MsgId"] = json_body["MsgId"]
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
+		ngx.flush()
 		return
 	elseif payload_json["RuleType"] == "DevopsRule" then
 		data_str, result = g_cmd_micro.micro_delete(devops_ser,request_body)
@@ -1220,16 +1242,19 @@ elseif request_method == "DELETE" then
 		return_json["MsgId"] = json_body["MsgId"]
 		local res_str = cjson.encode(return_json)
 		ngx.say(res_str)
+		ngx.flush()
 		return
 	end
 
 	if result == false then
 		local json_str = encode_delete_response(msg_id, 1, 'Failure', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 1, 'Failure', data_table)
 	else
 		local json_str = encode_delete_response(msg_id, 0, 'Success', data_table)
 		ngx.say(json_str)
+		ngx.flush()
 		g_report_event.report_status(msg_id, 0, 'Success', data_table)
 	end
 end

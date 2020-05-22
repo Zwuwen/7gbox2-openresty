@@ -51,6 +51,7 @@ local function message_pack(json_body,res)
 	else
 		ngx.say(res)
 	end
+	ngx.flush()
 end
 
 local function result_message_pack(json_body,res)

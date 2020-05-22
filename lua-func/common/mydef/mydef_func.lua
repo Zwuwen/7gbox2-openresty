@@ -18,6 +18,7 @@ end
 function mydef_M.show_errinfo(msg,errcode,payload)
 	local json_str = string.format('{\n\"errcode\":%d,\n \"msg\":\"%s\"\n\"payload\":{\"%s\"}\n}',errcode,msg,payload)
 	ngx.say(json_str)
+	ngx.flush()
 end
 
 function mydef_M.trim(s)

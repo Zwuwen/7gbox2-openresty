@@ -53,10 +53,12 @@ local function post_method()
     else
         local json_str = '{\n\"Code\":400,\n \"Msg\":\"NoneType event"\n\"Payload\":{}\n}'
         ngx.say(json_str)
+        ngx.flush()
         return
     end
     local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
-	ngx.say(json_str)
+    ngx.say(json_str)
+    ngx.flush()
 end
 
 -------main function------------
