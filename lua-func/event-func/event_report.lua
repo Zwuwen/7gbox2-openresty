@@ -131,8 +131,7 @@ function event_report_M.attribute_change(body)
     rule_engine_trigger(body)
 end
 
--------------------------操作回复事件---------------------------------
-function event_report_M.method_respone(body)
+function event_report_M.method_respone_handle(param, body)
     local gw = g_sql_app.query_dev_info_tbl(0)
     body["GW"] = gw[1]["sn"]
     local msg_id = body["MsgId"]
@@ -155,6 +154,10 @@ function event_report_M.method_respone(body)
         end
     end
     g_dev_status.del_control_method(msg_id)
+end
+-------------------------操作回复事件---------------------------------
+function event_report_M.method_respone(body)
+    ngx.timer.at(0.2, event_report_M.method_respone_handle, body)
 end
 
 --------------------------联动事件------------------------------------
@@ -216,10 +219,10 @@ end
 function event_report_M.linkage_event(body)
     local playload = body["Payload"]
     local status = playload["Status"]
-    if status == 1 then
+    if status == "Start" then
         local out = playload["Out"]
         linkage_start(out)
-    elseif status == 2 then
+    elseif status == "End" then
         local out = playload["Out"]
         linkage_end(out)
     end
