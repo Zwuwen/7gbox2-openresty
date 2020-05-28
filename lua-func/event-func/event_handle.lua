@@ -41,7 +41,7 @@ local function post_method()
     elseif body["Event"] == "ResultUpload" then
         --命令操作结果反馈
         g_event_report.method_respone(body)
-    elseif body["Event"] == "RunningStatus" then
+    elseif body["Event"] == "LinkageRuleStatus" then
         --联动事件
         g_event_report.linkage_event(body)
     elseif body["Event"] == "PlatStatus" then
