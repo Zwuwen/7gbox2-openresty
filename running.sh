@@ -7,32 +7,30 @@ CONF=$PWD/7g_nginx_gw.conf
 NGINX=/usr/sbin/nginx
 PRIFIX=/userdata/7g-box/openresty-svr/
 
+mkdir -p /data/logs/nginx
+mkdir -p /var/log/nginx /var/tmp/nginx
 
-rm -rf logs/*
-killall nginx
-
-if [ $# -ge 1 ]
-then
-	echo "restart"
-	if [ $1 == "restart" ]
-	then
-		echo "config file: $CONF"
-		echo "currdir: $PWD"
-		$NGINX -c $CONF -s reload -p $PRIFIX
-		echo -e "\033[32m openresty restart complete \033[0m"
-	fi
-else
-
-	if [ -e $CONF ]
-	then
-		killall nginx
-		sleep 1
-		echo "config file: $CONF"
-		$NGINX -c $CONF -p $PWD
-		echo -e "\033[32m running openresty complete \033[0m"
-
-	else
-		echo -e "\033[31m running openresty failure\033[0m"
-	fi
-
-fi
+case "$1" in
+  start)
+        echo "Starting nginx..."
+        echo "config file: $CONF"
+        $NGINX -c $CONF -p $PWD
+        ;;
+  stop)
+        echo "Stopping nginx..."
+        killall nginx
+        sleep 1
+        ;;
+  reload|force-reload)
+        echo "Reloading nginx configuration..."
+        "$NGINX" -s reload -c $CONF -p $PWD
+        ;;
+  restart)
+        "$0" stop
+        sleep 1 # Prevent race condition: ensure nginx stops before start.
+        "$0" start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart|reload|force-reload}"
+        exit 1
+esac

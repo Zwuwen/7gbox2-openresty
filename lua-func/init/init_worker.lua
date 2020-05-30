@@ -7,6 +7,22 @@ local regular_report_time = 300
 local plat_report_time = 30
 
 --------------------------------main function----------------------------
+--日志切分
+local function segment_log_every_day()
+    os.execute("sh segment_log.sh")
+    ngx.timer.at((24 * 3600), segment_log_every_day)
+end
+
+local function segment_log_start()
+    --计算当前时间距离下一个天的秒数
+    local current_time = os.time() --utc时间戳
+    local current_date, tmp = math.modf(current_time / (24 * 3600))
+    local second_to_next_date = (current_date + 1) * (24 * 3600) - current_time
+    ngx.timer.at(second_to_next_date, segment_log_every_day)
+end
+
+segment_log_start()
+
 --定时任务，执行策略
 --设置启动后第一次执行定时任务的时间
 local ok,err = ngx.timer.at(5, g_rule_timer.exec_rule_loop)
