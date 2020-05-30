@@ -26,10 +26,8 @@ end
 local function get_db_device_message(dev_id)
     local res,err = g_sql_app.query_dev_status_tbl(dev_id)
     if res then
-        for key, value in ipairs(res) do
-            local attribute = value["attribute"]
-            return attribute
-        end
+        local attribute = res[1]["attribute"]
+        return attribute
     else
         ngx.log(ngx.ERR,"query_dev_status_tbl fail dev_id= ",dev_id)
         return nil
@@ -51,12 +49,12 @@ function event_report_M.thing_online(devices)
         local dev_info = g_sql_app.query_dev_info_tbl(dev_id)
         ngx.log(ngx.ERR,"################################################model= ",dev_info[1]["dev_model"])
         dev_dict["DevModel"] = dev_info[1]["dev_model"]
-        local attributes = {}
-        attributes["Online"] = 1
-        attributes["SN"] = dev_info[1]["sn"]
+
         local result = g_sql_app.query_dev_status_tbl(dev_id)
-        attributes["AutoMode"] = result[1]["auto_mode"]
-        dev_dict["Attributes"] = attributes
+        dev_dict["Attributes"]["Online"] = 1
+        dev_dict["Attributes"]["SN"] = dev_info[1]["sn"]
+        dev_dict["Attributes"]["AutoMode"] = result[1]["auto_mode"]
+
         table.insert(dev_list,dev_dict)
     end
     local gw,err= g_sql_app.query_dev_info_tbl(0)
