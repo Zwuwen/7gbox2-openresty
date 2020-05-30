@@ -51,6 +51,10 @@ function event_report_M.thing_online(devices)
         dev_dict["DevModel"] = dev_info[1]["dev_model"]
 
         local result = g_sql_app.query_dev_status_tbl(dev_id)
+        if dev_dict["Attributes"] == nil then
+            dev_dict["Attributes"] = {}
+        end
+
         dev_dict["Attributes"]["Online"] = 1
         dev_dict["Attributes"]["SN"] = dev_info[1]["sn"]
         dev_dict["Attributes"]["AutoMode"] = result[1]["auto_mode"]
