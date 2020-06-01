@@ -189,10 +189,10 @@ local function create_rule(req_payload)
 		end
 
 		--执行一次该方法的策略
-		g_exec_rule.exec_rules_in_channel(json_obj["DevType"], json_obj["DevId"], json_obj["DevChannel"])
+		local has_failed = g_exec_rule.exec_rules_by_devid(json_obj["DevType"], json_obj["DevId"])
 
 		--更新定时任务间隔
-		--g_rule_timer.refresh_rule_timer()
+		g_rule_timer.refresh_rule_timer(has_failed)
 	end
 	
 	return "", true
@@ -249,10 +249,10 @@ local function delete_rule(req_payload)
 
 				--执行一次该方法的策略
 				qres[1] = g_rule_common.db_str_trim(qres[1])
-				g_exec_rule.exec_rules_in_channel(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
+				local has_failed = g_exec_rule.exec_rules_by_devid(qres[1]["dev_type"], qres[1]["dev_id"])
 
 				--更新定时任务间隔
-				--g_rule_timer.refresh_rule_timer()
+				g_rule_timer.refresh_rule_timer(has_failed)
 			end
 		end
 	elseif method == 'DelByDevId' then
@@ -290,7 +290,7 @@ local function delete_rule(req_payload)
 		end		
 
 		--更新定时任务间隔
-		--g_rule_timer.refresh_rule_timer()
+		g_rule_timer.refresh_rule_timer(nil)
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
 		return "delete rules, method error", false
@@ -356,10 +356,10 @@ local function update_rule(req_payload)
 
 		--执行一次该方法的策略
 		qres[1] = g_rule_common.db_str_trim(qres[1])
-		g_exec_rule.exec_rules_in_channel(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
+		local has_failed = g_exec_rule.exec_rules_by_devid(qres[1]["dev_type"], qres[1]["dev_id"])
 
 		--更新定时任务间隔
-		--g_rule_timer.refresh_rule_timer()
+		g_rule_timer.refresh_rule_timer(has_failed)
 	end
 	
 	return "", true
@@ -505,7 +505,7 @@ local function create_rule_group(all_json)
 		if rule_obj["DevType"] == "Lamp" then
 			rule_group = {"SetOnOff", "SetBrightness"}
 		elseif rule_obj["DevType"] == "InfoScreen" then
-			rule_group = {"SetOnOff", "LoadProgram", "SetBrightness", "SetVolume"}-----------------------------------------
+			rule_group = {"SetOnOff", "PlayProgram", "SetBrightness", "SetVolume"}
 		elseif rule_obj["DevType"] == "IPC-Onvif" then
 			rule_group = {"GotoPreset"}
 		elseif rule_obj["DevType"] == "Speaker" then
@@ -562,8 +562,6 @@ local function create_rule_group(all_json)
 			return res, false
 		end
 	end
-	--更新定时任务间隔
-	g_rule_timer.refresh_rule_timer()
 
 	return "", true
 end
@@ -585,9 +583,6 @@ local function delete_rule_group(all_json)
 		ngx.log(ngx.ERR,"delete rule fail")
 		return res, false
 	end
-
-	--更新定时任务间隔
-	g_rule_timer.refresh_rule_timer()
 
 	if payload["Method"] == "DelByRuleUuid" then
 		--检查并设置所有设备默认状态
@@ -649,8 +644,6 @@ local function update_rule_group(all_json)
 			return res, false
 		end
 	end
-	--更新定时任务间隔
-	g_rule_timer.refresh_rule_timer()
 
 	--检查并设置所有设备默认状态
 	g_dev_dft.set_all_dev_dft()

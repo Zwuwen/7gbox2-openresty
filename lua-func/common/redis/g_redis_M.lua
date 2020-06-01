@@ -2,9 +2,8 @@ local g_redis_M = {version='v1.0.1'}
 
 --local define
 
-local red
 --open redis
-function g_redis_M.open_db()
+function g_redis_M.open_db(red)
     local redis_conf = require "conf.redis_conf"
     local redis = require "thirdlib.redis"
     redis.add_commands("keys")
@@ -13,24 +12,25 @@ function g_redis_M.open_db()
     local ok,err = red:connect(redis_conf.host,redis_conf.port)
     if not ok then
         ngx.log(ngx.ERR,"connect redis db fail")
-        return false
+        return nil
     end
     if not ok then
         ngx.log(ngx.ERR,"redis db fail to set_keepalive")
-        return false
+        return nil
     end
     ngx.log(ngx.ERR,"connect redis db success!")
-    return true
+    return red
 end
 
 --close db
-function g_redis_M.close_db()
+function g_redis_M.close_db(red)
     red:close()
+    --red = nil
     ngx.log(ngx.ERR,"redis db close!")
 end
 
 --set sing data
-function g_redis_M.redis_set(key,value)
+function g_redis_M.redis_set(red,key,value)
     local ok,err = red:set(key,value)
     if not ok then
         ngx.log(ngx.ERR,"redis_set is fail!")
@@ -40,7 +40,7 @@ function g_redis_M.redis_set(key,value)
 end
 
 --get sing data
-function g_redis_M.redis_get(key)
+function g_redis_M.redis_get(red,key)
     local res,err = red:get(key)
     if  res == ngx.null then
         ngx.log(ngx.ERR,"redis_get is fail!")
@@ -50,7 +50,7 @@ function g_redis_M.redis_get(key)
  end
 
  --del
- function g_redis_M.redis_del(key)
+ function g_redis_M.redis_del(red,key)
     local res,err = red:del(key)
     if not res then
         ngx.log(ngx.ERR,"redis_del is fail!")
@@ -59,7 +59,7 @@ function g_redis_M.redis_get(key)
     return true
  end
 
- function g_redis_M.redis_get_keys(pattern)
+ function g_redis_M.redis_get_keys(red,pattern)
     local res,err = red:keys(pattern)
     if not res then
         ngx.log(ngx.ERR,"redis_del is fail!")

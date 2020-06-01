@@ -10,6 +10,11 @@ local hours24 = 86400
 --关闭设备
 m_rule_common.set_off = 0
 
+--设备类型定义
+m_rule_common.lamp_type = "Lamp"
+m_rule_common.screen_type = "InfoScreen"
+m_rule_common.ipc_onvif_type = "IPC-Onvif"
+m_rule_common.speaker_type = "Speaker"
 
 --load module
 local g_sql_app = require("common.sql.g_orm_info_M")
@@ -251,7 +256,7 @@ end
 -------------------------------------------------------------------------------------
 --打包HTTP请求数据
 math.randomseed(tostring(os.time()):reverse():sub(1, 7))
-local function encode_http_downstream_param(rule_obj)
+function m_rule_common.encode_http_downstream_param(rule_obj)
     local http_param_table = {}
     http_param_table["Token"]     = '7GBox_rule'
     http_param_table["MsgId"]	  = "time_"..os.date("%y%m%d-%H%M%S")..tostring(math.random(100,999))
@@ -266,17 +271,17 @@ local function encode_http_downstream_param(rule_obj)
 end
 
 --给微服务发送HTTP请求
-function m_rule_common.exec_http_request(rule_obj)
-    local http_param_table = encode_http_downstream_param(rule_obj)
+function m_rule_common.exec_http_request(http_param_table)
+    --local http_param_table = encode_http_downstream_param(rule_obj)
     if next(http_param_table["In"]) == nil then
         ngx.log(ngx.INFO,"rule param is nil")
         --return false
     end
 
     local http_param_str = cjson.encode(http_param_table)
-    ngx.log(ngx.INFO,"time rule request msrv: ", rule_obj["dev_type"].." - "..http_param_str)
+    ngx.log(ngx.INFO,"time rule request msrv: ", http_param_table["DevType"].." - "..http_param_str)
 
-    local res, err = g_micro.micro_post(rule_obj["dev_type"], http_param_str)
+    local res, err = g_micro.micro_post(http_param_table["DevType"], http_param_str)
     if err == false then
         ngx.log(ngx.ERR,"http request micro service fail: ",res, err)
         return false

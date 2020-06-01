@@ -6,13 +6,64 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 
+local function get_dft_non_exec_start_time(dev_type, dev_id, channel)
+    local sql_str = string.format("select * from run_rule_tbl where (dev_type=\'%s\' and dev_id=%d and dev_channel=%d and start_date<=current_date and current_date<=end_date and end_time <= current_time) order by end_time DESC limit 1", dev_type, dev_id, channel)
+    local res,err = g_sql_app.query_table(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res,err)
+        return false
+    end
+    if next(res) == nil then
+        --当前时间之前没有结束时间点，返回当前时间
+        return os.date("%H:%M:%S")      --os.date("%Y-%m-%d %H:%M:%S")
+    end
+    --ngx.log(ngx.INFO,"===========1111: ", cjson.encode(res[1]))
+    return res[1]["end_time"]
+end
+
+local function get_dft_start_time(dev_type, dev_id, channel)
+    local sql_str = string.format("select * from run_rule_tbl where (dev_type=\'%s\' and dev_id=%d and dev_channel=%d)", dev_type, dev_id, channel)
+    local res,err = g_sql_app.query_table(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res,err)
+        return false
+    end
+    if next(res) == nil then
+        --当前设备没有时间策略
+        return "00:00:00"
+    else
+        local s_time = get_dft_non_exec_start_time(dev_type, dev_id, channel)
+        return s_time
+    end 
+end
+
 
 local function set_common_dft(dev_type, dev_id, channel, req_data)
     req_data["dev_type"] = dev_type
     req_data["dev_id"] = dev_id
     req_data["dev_channel"] = channel
+    --
+    req_data["rule_uuid"] = "rule_default_handle"
+    local s_time = get_dft_start_time(dev_type, dev_id, channel)
+    if s_time ~= false then
+        req_data["start_time"] = s_time
+    end 
+    local e_time = nil
+    if e_time ~= false then
+        req_data["end_time"] = e_time
+    end
+    --ngx.log(ngx.INFO,"===========dft req: ", cjson.encode(req_data))
 
-    local rt = g_rule_common.exec_http_request(req_data)
+    --生成微服务报文
+    local http_param_table = g_rule_common.encode_http_downstream_param(req_data)
+    --请求微服务
+    local rt = g_rule_common.exec_http_request(http_param_table)
+
+    --插入redis
+
+    --通过sleep，在3s内check result upload
+
+    --删除redis
     return rt
 end
 
@@ -92,10 +143,9 @@ function m_dev_dft.set_channel_dft(dev_type, dev_id, channel)
 end
 
 function m_dev_dft.set_dev_dft(dev_type, dev_id)
-    if dev_type == "AI" or
-        dev_type == "GW" or
-        dev_type == "Configure"
-    then
+    local dev_group = {g_rule_common.lamp_type, g_rule_common.screen_type, g_rule_common.speaker_type}
+    local include = g_rule_common.is_include(dev_type, dev_group)
+    if include == false then
         return "", true
     end
 

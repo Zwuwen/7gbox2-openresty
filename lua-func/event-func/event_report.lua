@@ -11,6 +11,7 @@ local g_dev_status = require("dev-status-func.dev_status")
 local g_exec_rule = require("alone-func.exec_rule")
 local g_linkage = require("alone-func.linkage_sync")
 local g_cmd_sync = require("alone-func.cmd_sync")
+local g_tstatus = require("alone-func.time_rule_status")
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -149,6 +150,7 @@ function event_report_M.method_respone_handle(param, body)
             end
         end
     else
+        g_tstatus.update(body)
         local payload = body["Payload"]
         local result = payload["Result"]
         if result == 0 then
