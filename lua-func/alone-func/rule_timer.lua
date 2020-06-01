@@ -30,10 +30,12 @@ function m_rule_timer.refresh_rule_timer(has_failed)
     --interval = 10
 
     --设置后续执行定时任务的时间
-    local ok,err = ngx.timer.at(interval, m_rule_timer.exec_rule_loop)
-    if not ok then
-        ngx.log(ngx.ERR,"rule running failure")
-        return
+    if ngx.worker.id() == 0 then
+        local ok,err = ngx.timer.at(interval, m_rule_timer.exec_rule_loop)
+        if not ok then
+            ngx.log(ngx.ERR,"rule running failure")
+            return
+        end
     end
 end
 

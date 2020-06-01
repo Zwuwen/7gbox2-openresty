@@ -13,6 +13,7 @@ local g_report_event = require("alone-func.rule_report_event")
 local rules_table = {}
 
 local exec_dev_only = true
+local rule_module_idle = true
 
 --function define
 ---------------------策略自动执行-----------------------------------
@@ -165,7 +166,7 @@ end
 --从redis获取ResultUpload
 local function check_result_upload(msg_id)
     local result, cmd_status = g_tstatus.query(msg_id)
-    ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
+    --ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
 
     local result_table = cjson.decode(result)
 
@@ -206,9 +207,9 @@ local function exec_a_method(rule)
     --等待ResultUpload
     local msrvcode, desp
     while true do
-        ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
+        --ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
         msrvcode, desp = check_result_upload(http_param_table["MsgId"])
-        ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
+        --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
             --本条method ResultUpload未收到，继续检查
@@ -218,7 +219,7 @@ local function exec_a_method(rule)
             break
         end        
     end
-    ngx.log(ngx.DEBUG,"exec ", rule["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
+    --ngx.log(ngx.DEBUG,"exec ", rule["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
 
     --删除redis
     g_tstatus.del(http_param_table["MsgId"])
@@ -327,7 +328,7 @@ local function exec_rules_in_coroutine()
     local has_failed = false
 
     for i,rule in ipairs(rules_table) do
-        ngx.log(ngx.NOTICE,"rules_table: ", cjson.encode(rule))
+        --ngx.log(ngx.NOTICE,"rules_table: ", cjson.encode(rule))
         if rule["dev_type"] == g_rule_common.lamp_type then
             if rule["dev_channel"] == 1 then
                 --
@@ -372,11 +373,11 @@ local function exec_rules_in_coroutine()
     --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
 
     while next(rule_coroutine) ~= nil do
-        ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
+        --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
         for i=1,#rule_coroutine do
-            ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
+            --ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
             local coroutinert, complete, msrvcode = coroutine.resume(rule_coroutine[i], rules_table[i])
-            ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
+            --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
 
             if complete == true then
                 --策略组执行完成
@@ -393,7 +394,7 @@ local function exec_rules_in_coroutine()
                 break
             else
                 --策略组执行未完成
-                ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
+                --ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
             end
         end
     end
@@ -481,7 +482,7 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
 
     local has_failed
     if exec_dev_only then
-        ngx.log(ngx.INFO,"========================exec rules in device level by coroutine")
+        ngx.log(ngx.INFO,"exec rules in device level by coroutine")
         has_failed = exec_rules_in_coroutine()
     end
     return has_failed
@@ -506,13 +507,18 @@ end
 
 --执行所有类型设备的策略
 function m_exec_rule.exec_all_rules()
+    while rule_module_idle == false do
+        ngx.sleep(0.5)
+    end
     exec_dev_only = false
+    rule_module_idle = false
     local dev_type_array, dev_type_cnt = query_device_type()
     --ngx.log(ngx.INFO,"device type cnt: ", dev_type_cnt.." ".."device type list :", cjson.encode(dev_type_array))
 
     if next(dev_type_array) == nil
     then
         ngx.log(ngx.NOTICE,"has no type")
+        rule_module_idle = true
         g_dev_dft.set_all_dev_dft()
         return nil
     end
@@ -522,9 +528,10 @@ function m_exec_rule.exec_all_rules()
         m_exec_rule.exec_rules_by_type(dev_type_array[i])
     end
 
-    ngx.log(ngx.INFO,"========================exec all rules by coroutine")
+    ngx.log(ngx.INFO,"exec all rules by coroutine")
     local has_failed = exec_rules_in_coroutine()
     exec_dev_only = true
+    rule_module_idle = true
 
     --设置无时间策略的设备为默认状态，有策略的不管
     g_dev_dft.set_all_dev_dft()

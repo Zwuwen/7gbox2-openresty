@@ -6,6 +6,7 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
 local g_exec_rule = require("alone-func.exec_rule")
+local g_rule_timer = require("alone-func.rule_timer")
 
 
 --function define
@@ -66,7 +67,9 @@ local function cmd_restore_rule_running(dev_type, dev_id)
     end
     --auto_mode == 1
     --执行设备的策略
-    g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+    local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+    --更新定时任务间隔
+    g_rule_timer.refresh_rule_timer(has_failed)
     return true
 end
 

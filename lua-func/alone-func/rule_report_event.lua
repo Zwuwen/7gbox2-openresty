@@ -76,7 +76,7 @@ local function encode_rule_exec_status(rule,status,cnt,errcode,descrip)
     f_table["Payload"] = payload
 	
 	f_str = cjson.encode(f_table)
-	ngx.log(ngx.INFO," ", f_str)
+	--ngx.log(ngx.INFO," ", f_str)
 	return f_str
 end
 

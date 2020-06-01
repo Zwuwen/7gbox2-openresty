@@ -12,6 +12,7 @@ local g_exec_rule = require("alone-func.exec_rule")
 local g_linkage = require("alone-func.linkage_sync")
 local g_cmd_sync = require("alone-func.cmd_sync")
 local g_tstatus = require("alone-func.time_rule_status")
+local g_rule_timer = require("alone-func.rule_timer")
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -41,7 +42,10 @@ function event_report_M.thing_online(devices)
         local dev_id = value["DevId"]
         local dev_type = value["DevType"]
         --执行该设备的时间策略
-        g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+        local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+	--更新定时任务间隔
+        g_rule_timer.refresh_rule_timer(has_failed)
+        
         --上报属性
         local device_object = get_db_device_message(dev_id)
         local dev_dict = cjson.decode(device_object)

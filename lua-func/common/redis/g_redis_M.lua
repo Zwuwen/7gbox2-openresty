@@ -18,7 +18,7 @@ function g_redis_M.open_db(red)
         ngx.log(ngx.ERR,"redis db fail to set_keepalive")
         return nil
     end
-    ngx.log(ngx.ERR,"connect redis db success!")
+    --ngx.log(ngx.ERR,"connect redis db success!")
     return red
 end
 
@@ -26,7 +26,7 @@ end
 function g_redis_M.close_db(red)
     red:close()
     --red = nil
-    ngx.log(ngx.ERR,"redis db close!")
+    --ngx.log(ngx.ERR,"redis db close!")
 end
 
 --set sing data
