@@ -166,7 +166,7 @@ end
 --从redis获取ResultUpload
 local function check_result_upload(msg_id)
     local result, cmd_status = g_tstatus.query(msg_id)
-    --ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
+    ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
 
     local result_table = cjson.decode(result)
 
@@ -207,9 +207,9 @@ local function exec_a_method(rule)
     --等待ResultUpload
     local msrvcode, desp
     while true do
-        --ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
+        ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
         msrvcode, desp = check_result_upload(http_param_table["MsgId"])
-        --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
+        ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
             --本条method ResultUpload未收到，继续检查
@@ -219,7 +219,7 @@ local function exec_a_method(rule)
             break
         end        
     end
-    --ngx.log(ngx.DEBUG,"exec ", rule["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
+    ngx.log(ngx.DEBUG,"exec ", rule["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
 
     --删除redis
     g_tstatus.del(http_param_table["MsgId"])
@@ -286,38 +286,6 @@ local function exec_rule_group(rule)
     return true, true
 end
 
-local function exec_lamp_channel1_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_lamp_channel2_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_lamp_channel3_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_lamp_channel4_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_lamp_channel5_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_screen_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_ipc_onvif_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
-local function exec_speaker_rule_group(rule)
-    return exec_rule_group(rule)
-end
-
 local function exec_rules_in_coroutine()
     if next(rules_table) == nil then
         ngx.log(ngx.INFO,"box has no rules to exec")
@@ -329,55 +297,18 @@ local function exec_rules_in_coroutine()
 
     for i,rule in ipairs(rules_table) do
         --ngx.log(ngx.NOTICE,"rules_table: ", cjson.encode(rule))
-        if rule["dev_type"] == g_rule_common.lamp_type then
-            if rule["dev_channel"] == 1 then
-                --
-                ngx.log(ngx.DEBUG,"lamp channel1 coroutine")
-                rule_coroutine[i] = coroutine.create(exec_lamp_channel1_rule_group)
-            elseif rule["dev_channel"] == 2 then
-                --
-                ngx.log(ngx.DEBUG,"lamp channel2 coroutine")
-                rule_coroutine[i] = coroutine.create(exec_lamp_channel2_rule_group)
-            elseif rule["dev_channel"] == 3 then
-                --
-                ngx.log(ngx.DEBUG,"lamp channel3 coroutine")
-                rule_coroutine[i] = coroutine.create(exec_lamp_channel3_rule_group)
-            elseif rule["dev_channel"] == 4 then
-                --
-                ngx.log(ngx.DEBUG,"lamp channel4 coroutine")
-                rule_coroutine[i] = coroutine.create(exec_lamp_channel4_rule_group)
-            elseif rule["dev_channel"] == 5 then
-                --
-                ngx.log(ngx.DEBUG,"lamp channel5 coroutine")
-                rule_coroutine[i] = coroutine.create(exec_lamp_channel5_rule_group)
-            else
-                ngx.log(ngx.ERR,"lamp channel not support")
-            end
-        elseif rule["dev_type"] == g_rule_common.screen_type then
-            --
-            ngx.log(ngx.DEBUG,"screen coroutine")
-            rule_coroutine[i] = coroutine.create(exec_screen_rule_group)
-        elseif rule["dev_type"] == g_rule_common.ipc_onvif_type then
-            --
-            ngx.log(ngx.DEBUG,"ipc_onvif coroutine")
-            rule_coroutine[i] = coroutine.create(exec_ipc_onvif_rule_group)
-        elseif rule["dev_type"] == g_rule_common.speaker_type then
-            --
-            ngx.log(ngx.DEBUG,"speaker coroutine")
-            rule_coroutine[i] = coroutine.create(exec_speaker_rule_group)
-        else
-            --
-            ngx.log(ngx.ERR,"device rules not support")
-        end
+        --
+        ngx.log(ngx.DEBUG,rule["dev_type"].." coroutine")
+        rule_coroutine[i] = coroutine.create(exec_rule_group)
     end
     --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
 
     while next(rule_coroutine) ~= nil do
-        --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
+        ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
         for i=1,#rule_coroutine do
-            --ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
+            ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
             local coroutinert, complete, msrvcode = coroutine.resume(rule_coroutine[i], rules_table[i])
-            --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
+            ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
 
             if complete == true then
                 --策略组执行完成
@@ -394,7 +325,7 @@ local function exec_rules_in_coroutine()
                 break
             else
                 --策略组执行未完成
-                --ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
+                ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
             end
         end
     end
