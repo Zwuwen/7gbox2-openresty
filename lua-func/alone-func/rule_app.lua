@@ -552,15 +552,15 @@ local function create_rule_group(all_json)
 			ngx.log(ngx.ERR,"rule group method too much")
 			return "rule group method too much", false
 		end
+	end
 
-		--插入策略
-		local tmp_rule_json = cjson.encode(payload)
-		ngx.log(ngx.INFO,"insert sub json: ", tmp_rule_json)
-		local res,err = create_rule(tmp_rule_json)
-		if err == false then
-			ngx.log(ngx.ERR,"insert rule fail")
-			return res, false
-		end
+	--插入策略
+	local tmp_rule_json = cjson.encode(payload)
+	ngx.log(ngx.INFO,"insert sub json: ", tmp_rule_json)
+	local res,err = create_rule(tmp_rule_json)
+	if err == false then
+		ngx.log(ngx.ERR,"insert rule fail")
+		return res, false
 	end
 
 	return "", true
@@ -636,13 +636,13 @@ local function update_rule_group(all_json)
 				end
 			end			
 		end
+	end
 
-		--更新
-		local res,err = update_rule(cjson.encode(payload))
-		if err == false then
-			ngx.log(ngx.ERR,"update rule fail")
-			return res, false
-		end
+	--更新
+	local res,err = update_rule(cjson.encode(payload))
+	if err == false then
+		ngx.log(ngx.ERR,"update rule fail")
+		return res, false
 	end
 
 	--检查并设置所有设备默认状态
