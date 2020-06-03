@@ -313,5 +313,11 @@ function event_report_M.platform_heart_event()
     event_send_message(event_conf.url,cjson.encode(message))
     
 end
+
+-------------------------时间策略执行状态------------------------------
+function event_report_M.transmit_do_nothing(body)
+    event_send_message(event_conf.url,cjson.encode(body))
+end
+
 return event_report_M
 

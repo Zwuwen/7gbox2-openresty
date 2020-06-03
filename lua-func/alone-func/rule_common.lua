@@ -239,8 +239,8 @@ end
 -------------------------------------------------------------------------------------
 --发起http请求
 function m_rule_common.request_http(protocol,url,cmd_param)
-    ngx.log(ngx.INFO,"rule http_uri: ", url)
-    ngx.log(ngx.INFO,"rule http_body: ", cmd_param)
+    ngx.log(ngx.DEBUG,"rule http_uri: ", url)
+    ngx.log(ngx.DEBUG,"rule http_body: ", cmd_param)
 
     g_http.init()
     

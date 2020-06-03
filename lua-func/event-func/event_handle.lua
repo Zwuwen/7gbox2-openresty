@@ -50,6 +50,9 @@ local function post_method()
     elseif body["Event"] == "Alarm" then
         --AI事件
         g_event_report.attribute_change(body)
+    elseif body["Event"] == "TimerRuleStatus" then
+        --时间策略执行状态
+        g_event_report.transmit_do_nothing(body)
     else
         local json_str = '{\n\"Code\":400,\n \"Msg\":\"NoneType event"\n\"Payload\":{}\n}'
         ngx.say(json_str)
