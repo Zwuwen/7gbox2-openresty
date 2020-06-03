@@ -18,7 +18,7 @@ case "$1" in
         ;;
   stop)
         echo "Stopping nginx..."
-        killall nginx
+        killall -9 nginx
         sleep 1
         ;;
   reload|force-reload)
