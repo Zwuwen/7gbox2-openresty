@@ -123,22 +123,27 @@ function m_exec_rule.clear_device_running(dev_type, dev_id)
 end
 
 --更新设备关闭时所有策略的运行状态
-local function update_set_off_status(rule_obj)  --改为actions-method
-    if rule_obj["method"] == "SetOnOff" then
-        local param = cjson.decode(rule_obj["rule_param"])
-        if param["OnOff"] == g_rule_common.set_off then
-            ngx.log(ngx.INFO,"update turn off dev: ", rule_obj["dev_type"].." "..rule_obj["dev_id"])
-            local err = m_exec_rule.clear_device_running(rule_obj["dev_type"], rule_obj["dev_id"])
-            if err == false then
-                ngx.log(ngx.ERR,"update turn off dev fail ")
-                return false
+local function update_set_off_status(rule_obj)
+    local actions = cjson.decode(rule_obj["actions"])
+
+    for i,action in ipairs(actions) do
+        if action["Method"] == "SetOnOff" then
+            local param = action["RuleParam"]
+            if param["OnOff"] == g_rule_common.set_off then
+                ngx.log(ngx.INFO,"update turn off dev: ", rule_obj["dev_type"].." "..rule_obj["dev_id"])
+                local err = m_exec_rule.clear_device_running(rule_obj["dev_type"], rule_obj["dev_id"])
+                if err == false then
+                    ngx.log(ngx.ERR,"update turn off dev fail ")
+                    return false
+                end
+            else
+                --开启
             end
         else
-            --开启
+            --其他方法，不需要更新
         end
-    else
-        --其他方法，不需要更新
     end
+
     return true
 end
 
@@ -297,7 +302,7 @@ local function exec_rules_in_coroutine()
 
     for i,rule in ipairs(rules_table) do
         --ngx.log(ngx.NOTICE,"rules_table: ", cjson.encode(rule))
-        --
+        --创建协程对象
         ngx.log(ngx.DEBUG,rule["dev_type"].." coroutine")
         rule_coroutine[i] = coroutine.create(exec_rule_group)
     end
@@ -306,6 +311,7 @@ local function exec_rules_in_coroutine()
     while next(rule_coroutine) ~= nil do
         ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
         for i=1,#rule_coroutine do
+            --ngx.sleep(0.1)
             ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
             local coroutinert, complete, msrvcode = coroutine.resume(rule_coroutine[i], rules_table[i])
             ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
