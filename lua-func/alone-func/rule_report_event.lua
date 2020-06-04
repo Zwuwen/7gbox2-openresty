@@ -44,11 +44,12 @@ local function encode_rule_exec_status(rule,status,cnt,errcode,descrip)
 
     local gw = g_sql_app.query_dev_info_tbl(0)
     local actions = cjson.decode(rule["actions"])
+    ngx.update_time()
 	
     f_table["Token"] = "7GBox"
     f_table["Event"] = "TimerRuleStatus"
     f_table["GW"] = gw[1]["sn"]
-    f_table["Time"] = os.date("%Y%m%d-%H%M%S")
+    f_table["Time"] = tostring(ngx.now())
     
     local payload = {}
     payload["Status"] = status      --Start/End
