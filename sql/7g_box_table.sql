@@ -28,7 +28,8 @@ create table dev_info_tbl (
 	pdu_port int not null,
 	sn text,
 	ability_method text,
-	ability_attribute text
+	ability_attribute text,
+	configs text
 );
 
 create table config_ip_tbl (
