@@ -79,4 +79,31 @@ function time_rule_status.del(msgid)
     g_redis.close_db(red)
 end
 
+--从redis获取ResultUpload
+function time_rule_status.check_result_upload(msg_id)
+    local result, cmd_status = time_rule_status.query(msg_id)
+    ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
+
+    local result_table = cjson.decode(result)
+
+    if result_table["MsgId"] ~= msg_id then
+        ngx.log(ngx.ERR,"MsgId "..result_table["MsgId"].." not match")
+        return nil, ""
+    end
+    
+    if result_table["Payload"] ~= nil then
+        local payload = result_table["Payload"]
+        if payload["Result"] ~= nil then
+            ngx.log(ngx.INFO,"method result upload: ", payload["Result"], payload["Descrip"])
+            return payload["Result"], cmd_status
+        end
+    end
+
+    if cmd_status == "Timeout" then
+        return 4, cmd_status
+    end
+
+    return nil, cmd_status
+end
+
 return time_rule_status

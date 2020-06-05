@@ -584,18 +584,24 @@ local function delete_rule_group(all_json)
 		return res, false
 	end
 
+	local set_dft_status
 	if payload["Method"] == "DelByRuleUuid" then
 		--检查并设置所有设备默认状态
-		g_dev_dft.set_all_dev_dft()
-		return res, err
+		set_dft_status = g_dev_dft.set_all_dev_dft()
 	elseif payload["Method"] == "DelByDevId" then
 		--检查并设置设备默认状态
-		g_dev_dft.set_dev_dft(payload["DevType"], payload["DevId"])
-		return res, err
+		set_dft_status = g_dev_dft.set_dev_dft(payload["DevType"], payload["DevId"])
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
 		return "delete rules, method error", false
 	end
+
+	if set_dft_status == false then
+		--设置设备默认状态失败，更新定时器
+		g_rule_timer.refresh_rule_timer(true)
+	end
+
+	return res, err
 end
 
 --更新策略组
@@ -646,7 +652,11 @@ local function update_rule_group(all_json)
 	end
 
 	--检查并设置所有设备默认状态
-	g_dev_dft.set_all_dev_dft()
+	local set_dft_status = g_dev_dft.set_all_dev_dft()
+	if set_dft_status == false then
+		--设置设备默认状态失败，更新定时器
+		g_rule_timer.refresh_rule_timer(true)
+	end
 
 	return "", true
 end

@@ -49,7 +49,7 @@ local function encode_rule_exec_status(rule,status,cnt,errcode,descrip)
     f_table["Token"] = "7GBox"
     f_table["Event"] = "TimerRuleStatus"
     f_table["GW"] = gw[1]["sn"]
-    f_table["Time"] = tostring(ngx.now())
+    f_table["Time"] = tostring((ngx.now() * 1000))
     
     local payload = {}
     payload["Status"] = status      --Start/End

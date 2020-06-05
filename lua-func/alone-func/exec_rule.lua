@@ -168,33 +168,6 @@ local function update_rule_run_status(rule_obj)
     return true
 end
 
---从redis获取ResultUpload
-local function check_result_upload(msg_id)
-    local result, cmd_status = g_tstatus.query(msg_id)
-    ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
-
-    local result_table = cjson.decode(result)
-
-    if result_table["MsgId"] ~= msg_id then
-        ngx.log(ngx.ERR,"MsgId "..result_table["MsgId"].." not match")
-        return nil, ""
-    end
-    
-    if result_table["Payload"] ~= nil then
-        local payload = result_table["Payload"]
-        if payload["Result"] ~= nil then
-            ngx.log(ngx.INFO,"method result upload: ", payload["Result"], payload["Descrip"])
-            return payload["Result"], cmd_status
-        end
-    end
-
-    if cmd_status == "Timeout" then
-        return 4, cmd_status
-    end
-
-    return nil, cmd_status
-end
-
 --执行策略
 local function exec_a_method(rule)
     --生成微服务报文
@@ -213,7 +186,7 @@ local function exec_a_method(rule)
     local msrvcode, desp
     while true do
         ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
-        msrvcode, desp = check_result_upload(http_param_table["MsgId"])
+        msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
         ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
@@ -345,7 +318,7 @@ local function rule_exec_end_and_set_dft(dev_type, dev_id, channel)
     local res,err = g_sql_app.query_table(sql_str)
     if err then
         ngx.log(ngx.ERR," ", res,err)
-        return
+        return nil
     end
 
     if next(res) ~= nil then
@@ -353,7 +326,8 @@ local function rule_exec_end_and_set_dft(dev_type, dev_id, channel)
         g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
     else
         --设备设置了时间策略，但是当前时间没有可执行策略，设为默认状态
-        g_dev_dft.set_channel_dft(dev_type, dev_id, channel)
+        local set_dft_status = g_dev_dft.set_channel_dft(dev_type, dev_id, channel)
+        return set_dft_status
     end
 end
 
@@ -364,7 +338,7 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
     local ruletable, err = g_sql_app.query_rule_tbl_by_channel(dev_type, dev_id, channel)
     if err then
         ngx.log(ngx.ERR,"select rule error: ", err)
-        return false
+        return nil
     end
 
     if next(ruletable) == nil then
@@ -380,7 +354,8 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
         end
 
         --设置默认状态
-        rule_exec_end_and_set_dft(dev_type, dev_id, channel)
+        local set_dft_status = rule_exec_end_and_set_dft(dev_type, dev_id, channel)
+        return set_dft_status
     else
         for i,rule in ipairs(ruletable) do
             ngx.log(ngx.INFO,"exec time rule: uuid=", rule["rule_uuid"])
@@ -408,7 +383,10 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     then
         ngx.log(ngx.NOTICE,"has no channel")
         --从联动或手动模式恢复后没有时间策略时设置默认
-        g_dev_dft.set_dev_dft(dev_type, dev_id)
+        local set_dft_status = g_dev_dft.set_dev_dft(dev_type, dev_id)
+        if set_dft_status == false then
+            return true
+        end
         return nil
     end
 
@@ -456,7 +434,10 @@ function m_exec_rule.exec_all_rules()
     then
         ngx.log(ngx.NOTICE,"has no type")
         rule_module_idle = true
-        g_dev_dft.set_all_dev_dft()
+        local set_dft_status = g_dev_dft.set_all_dev_dft()
+        if set_dft_status == false then
+            return true
+        end
         return nil
     end
 
@@ -471,7 +452,11 @@ function m_exec_rule.exec_all_rules()
     rule_module_idle = true
 
     --设置无时间策略的设备为默认状态，有策略的不管
-    g_dev_dft.set_all_dev_dft()
+    local set_dft_status = g_dev_dft.set_all_dev_dft()
+    if set_dft_status == false then
+        has_failed = true
+    end
+
     return has_failed
 end
 

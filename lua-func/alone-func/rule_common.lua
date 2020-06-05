@@ -186,10 +186,26 @@ end
 -------------------------------------------------------------------------------------
 --检查微服务状态
 -------------------------------------------------------------------------------------
+--设置设备默认状态标志
+--1: 是默认状态
+--0: 不是默认状态
+function m_rule_common.set_dev_dft_flag(dev_type, dev_id, value)
+    local sql_str = string.format("update dev_status_tbl set is_dft=%d where dev_id=%d", value, dev_id)
+    
+    local res, err = g_sql_app.exec_sql(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res, err)
+        return false
+    end
+    return true
+end
+
+--获取设备状态：在线状态、手动/自动模式、联动运行状态、默认状态
 function m_rule_common.check_dev_status(dev_type, dev_id, attr)
     local svr_online = 0
     local linkage_run = 0
     local auto_mode = 0
+    local is_dft = 0
     local res, err = g_sql_app.query_dev_status_tbl(dev_id)
     if err then
         ngx.log(ngx.ERR," ", res, err)
@@ -202,6 +218,7 @@ function m_rule_common.check_dev_status(dev_type, dev_id, attr)
         svr_online = res[1]["online"]
         linkage_run= res[1]["linkage_rule"]
         auto_mode  = res[1]["auto_mode"]
+        is_dft     = res[1]["is_dft"]
     end
     
     if attr == "online" then
@@ -230,6 +247,15 @@ function m_rule_common.check_dev_status(dev_type, dev_id, attr)
             return true     --手动模式        
         else
             return false    --自动模式
+        end
+    elseif attr == "default" then
+        --判断设备是否在默认状态
+        --ngx.log(ngx.INFO,"check default: ", is_dft)
+        if is_dft == 1 then
+            ngx.log(ngx.INFO,"device is default")
+            return true     --默认状态
+        else
+            return false    --不是默认状态
         end
     end
 end
