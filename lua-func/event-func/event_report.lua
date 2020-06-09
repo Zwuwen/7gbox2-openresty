@@ -142,7 +142,7 @@ function event_report_M.method_respone_handle(param, body)
     local gw = g_sql_app.query_dev_info_tbl(0)
     body["GW"] = gw[1]["sn"]
     local msg_id = body["MsgId"]
-    ngx.log(ngx.ERR,"###method_respone MsgId: ",msg_id)
+    ngx.log(ngx.DEBUG,"method_respone_handle start, MsgId: ",msg_id)
     if string.find(msg_id, "time_", 1) == nil then
         event_send_message(event_conf.url,cjson.encode(body))
         local payload = body["Payload"]
@@ -162,10 +162,15 @@ function event_report_M.method_respone_handle(param, body)
         end
     end
     g_dev_status.del_control_method(msg_id)
+    ngx.log(ngx.DEBUG,"method_respone_handle end, MsgId: ",msg_id)
 end
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
-    ngx.timer.at(0.2, event_report_M.method_respone_handle, body)
+    local delay_time = math.random()
+    local log = string.format("start a timer %f to send ResultUpload", delay_time)
+    ngx.log(ngx.DEBUG, log)
+    ngx.timer.at(delay_time, event_report_M.method_respone_handle, body)
+    ngx.log(ngx.DEBUG, "start timer success")
 end
 
 --------------------------联动事件------------------------------------
