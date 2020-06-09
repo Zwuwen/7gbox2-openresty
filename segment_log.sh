@@ -14,7 +14,7 @@ sleep $left_time
 
 mv /userdata/logs/nginx/openresty.log /userdata/logs/nginx/openresty-$(date +"%Y%m%d").log
 cd /usr/local/7g-box/openresty-svr/
-running.sh reload
+./running.sh reload
 find /userdata/logs/nginx -mtime +7 -type f -name \*.log | xargs rm -f
 
 sleep 60
