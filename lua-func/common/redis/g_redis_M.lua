@@ -43,7 +43,7 @@ end
 function g_redis_M.redis_get(red,key)
     local res,err = red:get(key)
     if  res == ngx.null then
-        ngx.log(ngx.ERR,"redis_get is fail!")
+        ngx.log(ngx.ERR,"redis_get is fail! key: ", key)
         return nil
     end
     return res
