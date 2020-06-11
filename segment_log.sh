@@ -1,6 +1,7 @@
 #!/bin/bash
 while :
 do
+sleep 300
 hour=`date "+%H"`
 minute=`date "+%M"`
 second=`date "+%S"`
@@ -17,5 +18,5 @@ cd /usr/local/7g-box/openresty-svr/
 ./running.sh reload
 find /userdata/logs/nginx -mtime +7 -type f -name \*.log | xargs rm -f
 
-sleep 60
+sleep 300
 done
