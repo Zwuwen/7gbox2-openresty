@@ -184,6 +184,30 @@ function m_rule_common.get_next_loop_interval()
 end
 
 -------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------
+--获取设备channel数
+function m_rule_common.get_dev_channel_cnt(dev_type, dev_id)
+    local res, err = g_sql_app.query_dev_status_tbl(dev_id)
+    if err then
+        ngx.log(ngx.ERR,"postgresql io err: ", err)
+        return nil
+    end
+    if next(res) == nil then
+        ngx.log(ngx.ERR,"device id not exist")
+        return nil
+    end
+    
+    local attribute = res[1]["attribute"]
+    local attribute_tbl = cjson.decode(attribute)
+    local channels = attribute_tbl["Channels"]
+    --ngx.log(ngx.DEBUG,"channels: ", cjson.encode(channels))
+    local channel_cnt = #channels
+    ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." channel_cnt: ", channel_cnt)
+    return channel_cnt
+end
+
+-------------------------------------------------------------------------------------
 --检查微服务状态
 -------------------------------------------------------------------------------------
 --设置设备默认状态标志
@@ -265,8 +289,8 @@ end
 -------------------------------------------------------------------------------------
 --发起http请求
 function m_rule_common.request_http(protocol,url,cmd_param)
-    ngx.log(ngx.DEBUG,"rule http_uri: ", url)
-    ngx.log(ngx.DEBUG,"rule http_body: ", cmd_param)
+    --ngx.log(ngx.DEBUG,"rule http_uri: ", url)
+    --ngx.log(ngx.DEBUG,"rule http_body: ", cmd_param)
 
     g_http.init()
     

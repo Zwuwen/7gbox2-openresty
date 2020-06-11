@@ -67,6 +67,10 @@ local function linkage_stop_rule_running(dev_type, dev_id)
         ngx.log(ngx.ERR,"update cmd rule running err")
         return false
     end
+
+    --清除设备默认状态标志
+    g_rule_common.set_dev_dft_flag(dev_type, dev_id, 0)
+
     return true
 end
 

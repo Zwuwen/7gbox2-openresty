@@ -64,7 +64,6 @@ create table run_rule_tbl(
 	end_time time not null,
 	start_date date not null,
 	end_date date not null,
-	retry int not null default(0),
 	running int not null default(0)
 );
 create table program_info_tbl (

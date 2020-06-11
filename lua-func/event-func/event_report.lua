@@ -8,6 +8,7 @@ local g_message = require("event-func.message_M")
 local event_conf = require("conf.event_conf")
 local g_micro = require("cmd-func.cmd_micro")
 local g_dev_status = require("dev-status-func.dev_status")
+local g_rule_common = require("alone-func.rule_common")
 local g_exec_rule = require("alone-func.exec_rule")
 local g_linkage = require("alone-func.linkage_sync")
 local g_cmd_sync = require("alone-func.cmd_sync")
@@ -79,6 +80,8 @@ function event_report_M.thing_offline(devices)
         local dev_type = value["DevType"]
         --清除该设备时间策略运行状态
         g_exec_rule.clear_device_running(dev_type, dev_id)
+        --清除设备默认状态标志
+        g_rule_common.set_dev_dft_flag(dev_type, dev_id, 0)
 
         --上报属性
         local dev_info = g_sql_app.query_dev_info_tbl(dev_id)

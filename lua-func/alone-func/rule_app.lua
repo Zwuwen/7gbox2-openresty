@@ -18,7 +18,6 @@ local g_report_event = require("alone-func.rule_report_event")
 --local g_linkage_sync = require("alone-func.linkage_sync")
 local g_cmd_micro = require("cmd-func.cmd_micro")
 local report_event  = require("event-func.event_report")
-local g_dev_dft = require("alone-func.dev_default")
 --function define
 ---------------------------------------------------------------------------------
 --输入检查
@@ -289,8 +288,11 @@ local function delete_rule(req_payload)
 			end
 		end		
 
+		--执行一次该方法的策略
+		local has_failed = g_exec_rule.exec_rules_by_devid(payload["DevType"], payload["DevId"])
+
 		--更新定时任务间隔
-		g_rule_timer.refresh_rule_timer(nil)
+		g_rule_timer.refresh_rule_timer(has_failed)
 	else
 		ngx.log(ngx.ERR,"delete rules, method error ")
 		return "delete rules, method error", false
@@ -584,23 +586,6 @@ local function delete_rule_group(all_json)
 		return res, false
 	end
 
-	local set_dft_status
-	if payload["Method"] == "DelByRuleUuid" then
-		--检查并设置所有设备默认状态
-		set_dft_status = g_dev_dft.set_all_dev_dft()
-	elseif payload["Method"] == "DelByDevId" then
-		--检查并设置设备默认状态
-		set_dft_status = g_dev_dft.set_dev_dft(payload["DevType"], payload["DevId"])
-	else
-		ngx.log(ngx.ERR,"delete rules, method error ")
-		return "delete rules, method error", false
-	end
-
-	if set_dft_status == false then
-		--设置设备默认状态失败，更新定时器
-		g_rule_timer.refresh_rule_timer(true)
-	end
-
 	return res, err
 end
 
@@ -649,13 +634,6 @@ local function update_rule_group(all_json)
 	if err == false then
 		ngx.log(ngx.ERR,"update rule fail")
 		return res, false
-	end
-
-	--检查并设置所有设备默认状态
-	local set_dft_status = g_dev_dft.set_all_dev_dft()
-	if set_dft_status == false then
-		--设置设备默认状态失败，更新定时器
-		g_rule_timer.refresh_rule_timer(true)
 	end
 
 	return "", true

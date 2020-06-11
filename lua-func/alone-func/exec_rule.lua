@@ -165,6 +165,9 @@ local function update_rule_run_status(rule_obj)
         return false
     end
 
+    --清除设备默认状态标志
+    g_rule_common.set_dev_dft_flag(rule_obj["dev_type"], rule_obj["dev_id"], 0)
+
     return true
 end
 
@@ -185,9 +188,9 @@ local function exec_a_method(rule)
     --等待ResultUpload
     local msrvcode, desp
     while true do
-        ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
+        --ngx.log(ngx.DEBUG,"check rule result-upload: ", rule["rule_uuid"].."  "..http_param_table["MsgId"])
         msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
-        ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
+        --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
             --本条method ResultUpload未收到，继续检查
@@ -197,7 +200,7 @@ local function exec_a_method(rule)
             break
         end        
     end
-    ngx.log(ngx.DEBUG,"exec ", rule["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
+    --ngx.log(ngx.DEBUG,"exec ", rule["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
 
     --删除redis
     g_tstatus.del(http_param_table["MsgId"])
@@ -210,22 +213,23 @@ local function exec_rule_group(rule)
     local rt = g_rule_common.check_dev_status(rule["dev_type"], rule["dev_id"], "online")
     if rt == false then
         ngx.log(ngx.NOTICE,"srv is offline, ignore rule! ")
-        g_report_event.report_rule_exec_status(rule, "Start", 0, nil, nil)
-        return true, false
+        --g_report_event.report_rule_exec_status(rule, "Start", 0, nil, nil)
+        --上线时会执行，不需要反错重试
+        return true, true
     end
     --检测联动是否在执行
     local rt = g_rule_common.check_dev_status(rule["dev_type"], rule["dev_id"], "linkage")
     if rt == true then
         ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
-        g_report_event.report_rule_exec_status(rule, "Start", 0, nil, nil)
-        return true, false
+        --这条策略本次不需要执行
+        return true, true
     end
     --检测是否手动模式
     local rt = g_rule_common.check_dev_status(rule["dev_type"], rule["dev_id"], "cmd")
     if rt == true then
         ngx.log(ngx.NOTICE,"cmd running, ignore rule! ")
-        g_report_event.report_rule_exec_status(rule, "Start", 0, nil, nil)
-        return true, false
+        --这条策略本次不需要执行
+        return true, true
     end
 
     --执行策略组
@@ -279,15 +283,14 @@ local function exec_rules_in_coroutine()
         ngx.log(ngx.DEBUG,rule["dev_type"].." coroutine")
         rule_coroutine[i] = coroutine.create(exec_rule_group)
     end
-    --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
 
     while next(rule_coroutine) ~= nil do
-        ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
+        --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
         for i=1,#rule_coroutine do
-            --ngx.sleep(0.1)
-            ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
+            ngx.sleep(0.1)
+            --ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
             local coroutinert, complete, msrvcode = coroutine.resume(rule_coroutine[i], rules_table[i])
-            ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
+            --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
 
             if complete == true then
                 --策略组执行完成
@@ -304,7 +307,7 @@ local function exec_rules_in_coroutine()
                 break
             else
                 --策略组执行未完成
-                ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
+                --ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
             end
         end
     end
@@ -313,7 +316,8 @@ local function exec_rules_in_coroutine()
     return has_failed
 end
 
-local function rule_exec_end_and_set_dft(dev_type, dev_id, channel)
+--返回策略执行结束报文
+local function rule_exec_end(best_rule, dev_type, dev_id, channel)
     local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
     local res,err = g_sql_app.query_table(sql_str)
     if err then
@@ -322,15 +326,29 @@ local function rule_exec_end_and_set_dft(dev_type, dev_id, channel)
     end
 
     if next(res) ~= nil then
-        --策略已结束，上报结束报文
-        g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
+        if next(best_rule) == nil then
+            --全部策略已结束，上报结束报文
+            g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
+        elseif res[1]["rule_uuid"] ~= best_rule[1]["rule_uuid"] then
+            --策略被更高优先级的替代或切换回低优先级，上一条上报结束
+            ngx.log(ngx.INFO,"exec rule with higher priority")
+            g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
+        else
+        
+        end
     else
-        --设备设置了时间策略，但是当前时间没有可执行策略，设为默认状态
-        local set_dft_status = g_dev_dft.set_channel_dft(dev_type, dev_id, channel)
-        return set_dft_status
+        if next(best_rule) ~= nil then
+            --可执行策略从无到有，上报默认结束
+            local dft_rule = g_dev_dft.encode_device_dft(dev_type, dev_id, channel)
+            if dft_rule == nil then
+                ngx.log(ngx.ERR,"default rule nil")
+                return nil
+            end
+
+            g_report_event.report_rule_exec_status(dft_rule, "End", 0, nil, nil)
+        end
     end
 end
-
 
 --执行设备某个channel的策略
 function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
@@ -341,22 +359,20 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
         return nil
     end
 
-    if next(ruletable) == nil then
-        --上报结束报文
-        rule_exec_end_and_set_dft(dev_type, dev_id, channel)
+    --检查并上报结束报文
+    rule_exec_end(ruletable, dev_type, dev_id, channel)
 
-        --channel当前时间没有可执行的策略，清除该channel所有策略的running为0
+    if next(ruletable) == nil then
+        --dev_type-dev_id-dev_channel没有可执行的策略
+        --清除该channel所有策略的running为0
         ngx.log(ngx.NOTICE,"no rules available to exec ")
         local res,err = g_sql_app.update_rule_tbl_running(dev_type, dev_id, channel, 0)
         if err then
             ngx.log(ngx.ERR," ",res.."  err msg: ",err)
             return false
         end
-
-        --设置默认状态
-        local set_dft_status = rule_exec_end_and_set_dft(dev_type, dev_id, channel)
-        return set_dft_status
     else
+        --dev_type-dev_id-dev_channel有可执行的策略
         for i,rule in ipairs(ruletable) do
             ngx.log(ngx.INFO,"exec time rule: uuid=", rule["rule_uuid"])
 
@@ -379,10 +395,9 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     local dev_channel_array, dev_channel_cnt = query_device_channel(dev_type, dev_id)
     --ngx.log(ngx.INFO,"device channel cnt: ", dev_channel_cnt.." ".."device channel list :", cjson.encode(dev_channel_array))
 
-    if next(dev_channel_array) == nil
-    then
+    if next(dev_channel_array) == nil then
         ngx.log(ngx.NOTICE,"has no channel")
-        --从联动或手动模式恢复后没有时间策略时设置默认
+        --没有时间策略时设置默认,用于从联动或手动模式恢复后、上线、增删改执行策略等device级执行策略的情况
         local set_dft_status = g_dev_dft.set_dev_dft(dev_type, dev_id)
         if set_dft_status == false then
             return true
@@ -399,6 +414,12 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
     if exec_dev_only then
         ngx.log(ngx.INFO,"exec rules in device level by coroutine")
         has_failed = exec_rules_in_coroutine()
+
+        --检查并设置设备为默认状态
+        local set_dft_status = g_dev_dft.set_dev_dft(dev_type, dev_id)
+        if set_dft_status == false then
+            has_failed = true
+        end
     end
     return has_failed
 end
@@ -427,20 +448,23 @@ function m_exec_rule.exec_all_rules()
     end
     exec_dev_only = false
     rule_module_idle = false
+
     local dev_type_array, dev_type_cnt = query_device_type()
     --ngx.log(ngx.INFO,"device type cnt: ", dev_type_cnt.." ".."device type list :", cjson.encode(dev_type_array))
 
-    if next(dev_type_array) == nil
-    then
-        ngx.log(ngx.NOTICE,"has no type")
-        rule_module_idle = true
+    if next(dev_type_array) == nil then
+        ngx.log(ngx.INFO,"box has no rule")
         local set_dft_status = g_dev_dft.set_all_dev_dft()
+        exec_dev_only = true
+        rule_module_idle = true
         if set_dft_status == false then
+            --需要重试
             return true
         end
         return nil
     end
 
+    --执行所有策略
     for i=1,dev_type_cnt do
         --ngx.log(ngx.INFO,"select device in type: ",dev_type_array[i])
         m_exec_rule.exec_rules_by_type(dev_type_array[i])
@@ -448,14 +472,15 @@ function m_exec_rule.exec_all_rules()
 
     ngx.log(ngx.INFO,"exec all rules by coroutine")
     local has_failed = exec_rules_in_coroutine()
-    exec_dev_only = true
-    rule_module_idle = true
 
-    --设置无时间策略的设备为默认状态，有策略的不管
+    --检查并设置设备为默认状态
     local set_dft_status = g_dev_dft.set_all_dev_dft()
     if set_dft_status == false then
         has_failed = true
     end
+
+    exec_dev_only = true
+    rule_module_idle = true
 
     return has_failed
 end
