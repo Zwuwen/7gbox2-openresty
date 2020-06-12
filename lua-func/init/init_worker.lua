@@ -7,6 +7,13 @@ local regular_report_time = 300
 local plat_report_time = 30
 
 --------------------------------main function----------------------------
+--ResultUpload状态异步回复
+local ok,err = ngx.timer.every(0.5, g_event_report.method_respone_handle)
+if not ok then
+    ngx.log(ngx.ERR,"rule running failure, err:", err)
+    return
+end
+
 --定时任务，执行策略
 --设置启动后第一次执行定时任务的时间
 local ok,err = ngx.timer.at(5, g_rule_timer.exec_rule_loop)
