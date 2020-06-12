@@ -203,7 +203,7 @@ function m_rule_common.get_dev_channel_cnt(dev_type, dev_id)
     local channels = attribute_tbl["Channels"]
     --ngx.log(ngx.DEBUG,"channels: ", cjson.encode(channels))
     local channel_cnt = #channels
-    ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." channel_cnt: ", channel_cnt)
+    --ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." channel_cnt: ", channel_cnt)
     return channel_cnt
 end
 

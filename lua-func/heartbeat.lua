@@ -5,6 +5,7 @@ local rule_post_index = 16
 
 --load module
 local cjson = require("cjson")
+local g_sql_app = require("common.sql.g_orm_info_M")
 
 
 --------------------------------main function----------------------------
@@ -35,7 +36,14 @@ end
 
 --exec
 if request_method == "GET" then
-	local json_str = '{\n\"status\":\"ok\"\n}'
+	local gw = g_sql_app.query_dev_info_tbl(0)
+
+	local heart = {}
+	heart["Token"] = "7GBox"
+	heart["Event"] = "Heartbeat"
+	heart["GW"] = gw[1]["sn"]
+	local json_str = cjson.encode(heart)
+
 	ngx.say(json_str)
 	ngx.flush()
 end

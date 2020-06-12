@@ -271,7 +271,7 @@ end
 local function exec_rules_in_coroutine()
     if next(rules_table) == nil then
         ngx.log(ngx.INFO,"box has no rules to exec")
-        return nil
+        return false
     end
 
     local rule_coroutine = {}
@@ -318,6 +318,8 @@ end
 
 --返回策略执行结束报文
 local function rule_exec_end(best_rule, dev_type, dev_id, channel)
+    --查询是否有已运行的策略
+    --best_rule为新的可执行策略
     local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
     local res,err = g_sql_app.query_table(sql_str)
     if err then
