@@ -101,6 +101,7 @@ local function update_method()
 	ngx.req.read_body()
 	local request_body = ngx.req.get_body_data()
 	local json_body = cjson.decode(request_body)
+	ngx.log(ngx.DEBUG,"cmd put, msgid: ", json_body["MsgId"])
 	if json_body["Method"] == "ResetToAuto" then
 		--命令切换自动
 		local update_json = {}
@@ -165,6 +166,7 @@ local function update_method()
 			message_pack(json_body,res)
 		end
 	end
+	ngx.log(ngx.DEBUG,"cmd put end, msgid: ", json_body["MsgId"])
 end
 
 -----------------cmd post method---------------------

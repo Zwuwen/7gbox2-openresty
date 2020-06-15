@@ -14,10 +14,6 @@ function g_redis_M.open_db(red)
         ngx.log(ngx.ERR,"connect redis db fail")
         return nil
     end
-    if not ok then
-        ngx.log(ngx.ERR,"redis db fail to set_keepalive")
-        return nil
-    end
     --ngx.log(ngx.ERR,"connect redis db success!")
     return red
 end
@@ -31,41 +27,54 @@ end
 
 --set sing data
 function g_redis_M.redis_set(red,key,value)
-    local ok,err = red:set(key,value)
-    if not ok then
-        ngx.log(ngx.ERR,"redis_set is fail!")
-        return false
+    for var=0,10,1 do
+        local ok,err = red:set(key,value)
+        if ok then
+            return true
+        end
+        ngx.sleep(0.1)
     end
-    return true
+    str_log = string.format("redis_set is fail! key:%s, value:%s ",key, value)
+    ngx.log(ngx.ERR, str_log)
+    return false
 end
 
 --get sing data
 function g_redis_M.redis_get(red,key)
-    local res,err = red:get(key)
-    if  res == ngx.null then
-        ngx.log(ngx.ERR,"redis_get is fail! key: ", key)
-        return nil
+    for var=0,10,1 do
+        local res,err = red:get(key)
+        if  res ~= ngx.null then
+            return res
+        end
+        ngx.sleep(0.1)
     end
-    return res
+    ngx.log(ngx.ERR,"redis_get is fail! key: ", key)
+    return nil
  end
 
- --del
- function g_redis_M.redis_del(red,key)
-    local res,err = red:del(key)
-    if not res then
-        ngx.log(ngx.ERR,"redis_del is fail!")
-        return false
+--del
+function g_redis_M.redis_del(red,key)
+    for var=0,10,1 do
+        local res,err = red:del(key)
+        if res then
+            return true
+        end
+        ngx.sleep(0.1)
     end
-    return true
- end
+    ngx.log(ngx.ERR,"redis_del is fail!")
+    return false
+end
 
- function g_redis_M.redis_get_keys(red,pattern)
-    local res,err = red:keys(pattern)
-    if not res then
-        ngx.log(ngx.ERR,"redis_del is fail!")
-        return nil
+function g_redis_M.redis_get_keys(red,pattern)
+    for var=0,10,1 do
+        local res,err = red:keys(pattern)
+        if res then
+            return res
+        end
+        ngx.sleep(0.1)
     end
-    return res
- end
+    ngx.log(ngx.ERR,"redis_del is fail!")
+    return nil
+end
 
- return g_redis_M
+return g_redis_M

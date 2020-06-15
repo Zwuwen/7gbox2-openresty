@@ -27,7 +27,7 @@ end
 local function post_method()
     ngx.req.read_body()
     local request_body = ngx.req.get_body_data()
-    ngx.log(ngx.ERR,"micro post event: ",request_body)
+    ngx.log(ngx.DEBUG,"recv post event: ",request_body)
     local body = cjson.decode(request_body)
     if body["Event"] == "ThingsOnline" then
         --设备上线事件
@@ -57,11 +57,13 @@ local function post_method()
         local json_str = '{\n\"Code\":400,\n \"Msg\":\"NoneType event"\n\"Payload\":{}\n}'
         ngx.say(json_str)
         ngx.flush()
+        ngx.DEBUG(ngx.ERR,"recv post event failed")
         return
     end
     local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
     ngx.say(json_str)
     ngx.flush()
+    ngx.DEBUG(ngx.ERR,"recv post event success")
 end
 
 -------main function------------
