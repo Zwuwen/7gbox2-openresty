@@ -179,17 +179,22 @@ local function delete_method()
 
 end
 
+local function request_error_handle(err)
+	ngx.log(ngx.ERR,"request_error_handle ERR: ", err)
+end
+
+local function request_cmd_handle(request_method)
+	if request_method == "GET" then
+		get_method()
+	elseif request_method == "POST" then
+		create_method()
+	elseif request_method == "PUT" then
+		update_method()
+	elseif request_method == "DELETE" then
+		delete_method()
+	end
+end
 -------main function------------
 
 local request_method = ngx.var.request_method
-if request_method == "GET" then
-	get_method()
-elseif request_method == "POST" then
-	create_method()
-elseif request_method == "PUT" then
-	update_method()
-elseif request_method == "DELETE" then
-	delete_method()
-end
-
-
+status = xpcall( request_cmd_handle, request_error_handle, request_method )

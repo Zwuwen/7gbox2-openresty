@@ -66,15 +66,21 @@ local function post_method()
     ngx.DEBUG(ngx.ERR,"recv post event success")
 end
 
--------main function------------
-local request_method = ngx.var.request_method
-if request_method == "GET" then
-    get_method()
-elseif request_method == "POST" then
-    post_method()
-elseif request_method == "PUT" then
-    put_method()
-elseif request_method == "DELETE" then
-    delete_method()
+local function event_error_handle(err)
+	ngx.log(ngx.ERR,"event_error_handle ERR: ", err)
 end
 
+local function event_handle(request_method)
+    if request_method == "GET" then
+        get_method()
+    elseif request_method == "POST" then
+        post_method()
+    elseif request_method == "PUT" then
+        put_method()
+    elseif request_method == "DELETE" then
+        delete_method()
+    end
+end
+-------main function------------
+local request_method = ngx.var.request_method
+status = xpcall( event_handle, event_error_handle, request_method )
