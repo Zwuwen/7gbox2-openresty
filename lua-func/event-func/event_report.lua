@@ -263,6 +263,12 @@ local function creat_device_message(dev_type,dev_id,sn,dev_model,methods)
             dev_dict["DevId"] = dev_id
             dev_dict["DevModel"] = dev_model
             local attributes = {}
+            for k, v in pairs(dev_dict) do
+                if k == "Attributes" then
+                    attributes = dev_dict["Attributes"]
+                    break
+                end
+            end
             attributes["Online"] = value.online
             attributes["AutoMode"] = value.auto_mode
             attributes["SN"] = sn
