@@ -57,13 +57,13 @@ local function post_method()
         local json_str = '{\n\"Code\":400,\n \"Msg\":\"NoneType event"\n\"Payload\":{}\n}'
         ngx.say(json_str)
         ngx.flush()
-        ngx.DEBUG(ngx.ERR,"recv post event failed")
+        ngx.log(ngx.DEBUG,"recv post event failed")
         return
     end
     local json_str = '{\n\"Code\":200,\n \"Msg\":\"Sucess"\n\"Payload\":{}\n}'
     ngx.say(json_str)
     ngx.flush()
-    ngx.DEBUG(ngx.ERR,"recv post event success")
+    ngx.log(ngx.DEBUG,"recv post event success")
 end
 
 local function event_error_handle(err)
