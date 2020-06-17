@@ -147,7 +147,7 @@ end
 function event_report_M.method_respone_handle()
     if g_is_result_upload_timer_running == false then
         g_is_result_upload_timer_running = true
-        ngx.log(ngx.DEBUG,"method_respone_handle in, g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
+        --ngx.log(ngx.DEBUG,"method_respone_handle in, g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
         for k, v in ipairs(g_result_upload_msg_table) do
             ngx.log(ngx.DEBUG,"for g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
             local msg_id = v["MsgId"]
@@ -175,7 +175,7 @@ function event_report_M.method_respone_handle()
             ngx.log(ngx.DEBUG,"method_respone_handle end, MsgId: ",msg_id)
         end
         g_is_result_upload_timer_running = false
-        ngx.log(ngx.DEBUG,"method_respone_handle out")
+        --ngx.log(ngx.DEBUG,"method_respone_handle out")
     end
 end
 
