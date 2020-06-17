@@ -16,6 +16,7 @@ local g_tstatus = require("alone-func.time_rule_status")
 local g_rule_timer = require("alone-func.rule_timer")
 
 local g_result_upload_msg_table = {}
+local g_is_result_upload_timer_running = false
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -144,38 +145,47 @@ function event_report_M.attribute_change(body)
 end
 
 function event_report_M.method_respone_handle()
-    for k, v in ipairs(g_result_upload_msg_table) do
-        local msg_id = v["MsgId"]
-        ngx.log(ngx.DEBUG,"method_respone_handle start, MsgId: ",msg_id)
-        if string.find(msg_id, "time_", 1) == nil then
-            event_send_message(event_conf.url,cjson.encode(v))
-            local payload = v["Payload"]
-            local result = payload["Result"]
-            if result == 0 then
-                local json_str = g_dev_status.get_real_cmd_data(msg_id)
-                if json_str~=nil then
+    if g_is_result_upload_timer_running == false then
+        g_is_result_upload_timer_running = true
+        ngx.log(ngx.DEBUG,"method_respone_handle in, g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
+        for k, v in ipairs(g_result_upload_msg_table) do
+            ngx.log(ngx.DEBUG,"for g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
+            local msg_id = v["MsgId"]
+            ngx.log(ngx.DEBUG,"method_respone_handle start, MsgId: ",msg_id)
+            if string.find(msg_id, "time_", 1) == nil then
+                event_send_message(event_conf.url,cjson.encode(v))
+                local payload = v["Payload"]
+                local result = payload["Result"]
+                if result == 0 then
+                    local json_str = g_dev_status.get_real_cmd_data(msg_id)
+                    if json_str~=nil then
+                        g_dev_status.set_ack_cmd_data(msg_id)
+                    end
+                end
+            else
+                g_tstatus.update(v)
+                local payload = v["Payload"]
+                local result = payload["Result"]
+                if result == 0 then
                     g_dev_status.set_ack_cmd_data(msg_id)
                 end
             end
-        else
-            g_tstatus.update(v)
-            local payload = v["Payload"]
-            local result = payload["Result"]
-            if result == 0 then
-                g_dev_status.set_ack_cmd_data(msg_id)
-            end
+            g_dev_status.del_control_method(msg_id)
+            g_result_upload_msg_table[k] = nil
+            ngx.log(ngx.DEBUG,"method_respone_handle end, MsgId: ",msg_id)
         end
-        g_dev_status.del_control_method(msg_id)
-        ngx.log(ngx.DEBUG,"method_respone_handle end, MsgId: ",msg_id)
+        g_is_result_upload_timer_running = false
+        ngx.log(ngx.DEBUG,"method_respone_handle out")
     end
-    g_result_upload_msg_table = {}
 end
 
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
     local gw = g_sql_app.query_dev_info_tbl(0)
     body["GW"] = gw[1]["sn"]
+    ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size befor insert is ", table.maxn(g_result_upload_msg_table))
     table.insert(g_result_upload_msg_table, body)
+    ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size after insert is ", table.maxn(g_result_upload_msg_table))
 end
 
 --------------------------联动事件------------------------------------
