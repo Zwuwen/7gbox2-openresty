@@ -62,11 +62,11 @@ local function micro_cmd_exec(svr_type,request_body, method)
             return res,true
         else
             ngx.log(ngx.ERR, "micro_cmd_exec failed\n")
-            local json_str = '{\n\"Payload\":{\n\"Descrip\":\"Service offline\",\n\"Result\":13\n},\"Token\": \"Openresty\"\n}'
+            local json_str = '{\n\"Payload\":{\n\"Descrip\":\"Service offline\",\n\"Result\":14\n},\"Token\": \"Openresty\"\n}'
             return json_str,false
         end
     else
-        local json_str = '{\n\"Payload\":{\n\"Descrip\":\"Service offline\",\n\"Result\":13\n},\"Token\": \"Openresty\"\n}'
+        local json_str = '{\n\"Payload\":{\n\"Descrip\":\"Service offline\",\n\"Result\":14\n},\"Token\": \"Openresty\"\n}'
         ngx.log(ngx.ERR,"micro server is offline!")
         return json_str,false
     end
