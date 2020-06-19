@@ -141,7 +141,7 @@ end
 --
 --输入类型：int, table
 function g_orm_info_M.update_dev_status_tbl(dev_id, json)
-	if json["online"]==nil or dev_id==nil then
+	if dev_id==nil then
 		return "param error", false
 	end
 
