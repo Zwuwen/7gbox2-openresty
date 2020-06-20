@@ -171,9 +171,11 @@ local function check_and_set_channel_dft(dev_type, dev_id, channel)
 
     if next(res) == nil then
         --设备设置了时间策略，但是当前时间没有可执行策略，设为默认状态
+        ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." has no rules to exec, set default")
         local set_dft_status = set_channel_dft(dev_type, dev_id, channel)
         return set_dft_status
     end
+    --ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." rules running, do not set default")
     return true
 end
 
@@ -181,7 +183,7 @@ end
 --rt false: 设置失败
 function m_dev_dft.set_dev_dft(dev_type, dev_id)
     --屏蔽没有策略的设备
-    local dev_group = {g_rule_common.lamp_type, g_rule_common.screen_type, g_rule_common.speaker_type, g_rule_common.ipc_onvif_type}
+    local dev_group = {g_rule_common.lamp_type, g_rule_common.screen_type, g_rule_common.speaker_type}
     local include = g_rule_common.is_include(dev_type, dev_group)
     if include == false then
         return true
@@ -234,12 +236,14 @@ function m_dev_dft.set_dev_dft(dev_type, dev_id)
     local rt_value_table = {}
     if next(devices) == nil then
         --设备无策略
+        ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." has no rules")
         for i=1,channel_cnt do
             local rt_value = set_channel_dft(dev_type, dev_id, i)
             table.insert(rt_value_table, rt_value)
         end
     else
         --设备有策略
+        --ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." has rules")
         for i=1,channel_cnt do
             local rt_value = check_and_set_channel_dft(dev_type, dev_id, i)
             table.insert(rt_value_table, rt_value)
@@ -249,6 +253,7 @@ function m_dev_dft.set_dev_dft(dev_type, dev_id)
     local include = g_rule_common.is_include(false, rt_value_table)
     if include == true then
         --有设置失败的
+        ngx.log(ngx.ERR,dev_type.."-"..dev_id.." set default fail")
         return false
     end
     return true
@@ -275,6 +280,7 @@ function m_dev_dft.set_all_dev_dft()
     local include = g_rule_common.is_include(false, rt_value_table)
     if include == true then
         --有设置失败的
+        ngx.log(ngx.ERR,"set all default has fail, need retry")
         return false
     end
     return true

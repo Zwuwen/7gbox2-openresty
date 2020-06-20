@@ -10,13 +10,51 @@ local g_dev_dft = require("alone-func.dev_default")
 local g_tstatus = require("alone-func.time_rule_status")
 local g_report_event = require("alone-func.rule_report_event")
 
+--策略正在下发
+local rule_run = 1
+--策略下发停止
+local rule_stop = 0
+
 local rules_table = {}
+local rule_exec_objs = {}
 
 local exec_dev_only = true
 local rule_module_idle = true
 
 --function define
----------------------策略自动执行-----------------------------------
+--获取设备策略运行状态
+--rt: true  -- idle
+--rt: false -- 有策略执行
+function m_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
+    ngx.log(ngx.DEBUG,"check rule_exec_objs cnt: ", #rule_exec_objs)
+    for i,rule_exec_obj in ipairs(rule_exec_objs) do
+        if (rule_exec_obj["dev_type"] == dev_type) and
+            (rule_exec_obj["dev_id"] == dev_id) --and
+            --(rule_exec_obj["dev_channel"] == channel)
+        then
+            if rule_exec_obj["status"] == rule_run then
+                ngx.log(ngx.DEBUG, dev_type.."-"..dev_id.."-"..channel.." has rule executeing")
+                return false
+            end
+        end
+    end
+    ngx.log(ngx.DEBUG, dev_type.."-"..dev_id.."-"..channel.." has no rule executeing")
+    return true
+end
+
+--停止设备策略执行，释放协程
+function m_exec_rule.stop_device_rule_exec(dev_type, dev_id, channel)
+    for i,rule_exec_obj in ipairs(rule_exec_objs) do
+        if (rule_exec_obj["dev_type"] == dev_type) and
+            (rule_exec_obj["dev_id"] == dev_id) --and
+            --(rule_exec_obj["dev_channel"] == channel)
+        then
+            ngx.log(ngx.DEBUG, "cancel "..dev_type.."-"..dev_id.."-"..channel.." rule executeing")
+            rule_exec_obj["status"] = rule_stop
+        end
+    end 
+end
+
 local function dump_rule(rule_obj)
     ngx.log(ngx.INFO ,"rule_uuid  : ",rule_obj["rule_uuid"])
     ngx.log(ngx.INFO ,"dev_type   : ",rule_obj["dev_type"])
@@ -193,8 +231,13 @@ local function exec_a_method(rule)
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
+            --ngx.sleep(5)    --用于测试正在下发策略时有新策略要执行，冲突的情况
             --本条method ResultUpload未收到，继续检查
-            coroutine.yield(false, false)
+            local cancel = coroutine.yield(false, false)
+            if cancel == rule_stop then
+                --取消策略下发信号
+                return 1024, "cancel"
+            end
         else
             --收到，返回结果
             break
@@ -209,30 +252,6 @@ local function exec_a_method(rule)
 end
 
 local function exec_rule_group(rule)
-    --检测微服务是否在线
-    local rt = g_rule_common.check_dev_status(rule["dev_type"], rule["dev_id"], "online")
-    if rt == false then
-        ngx.log(ngx.NOTICE,"srv is offline, ignore rule! ")
-        --g_report_event.report_rule_exec_status(rule, "Start", 0, nil, nil)
-        --上线时会执行，不需要反错重试
-        return true, true
-    end
-    --检测联动是否在执行
-    local rt = g_rule_common.check_dev_status(rule["dev_type"], rule["dev_id"], "linkage")
-    if rt == true then
-        ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
-        --这条策略本次不需要执行
-        return true, true
-    end
-    --检测是否手动模式
-    local rt = g_rule_common.check_dev_status(rule["dev_type"], rule["dev_id"], "cmd")
-    if rt == true then
-        ngx.log(ngx.NOTICE,"cmd running, ignore rule! ")
-        --这条策略本次不需要执行
-        return true, true
-    end
-
-    --执行策略组
     local actions = cjson.decode(rule["actions"])
     for i,action in ipairs(actions) do
         rule["method"] = action["Method"]
@@ -243,6 +262,14 @@ local function exec_rule_group(rule)
         local msrvcode, desp = exec_a_method(rule)
         --msrvcode = 1  --测试用
         if msrvcode ~= 0 then
+            --取消策略执行
+            if (msrvcode == 1024) and
+                (desp == "cancel")
+            then
+                --结束协程
+                return "coroutine end"
+            end
+
             --ResultUpload错
             g_report_event.report_rule_exec_status(rule, "Start", i, msrvcode, desp)
             return true, false
@@ -273,41 +300,58 @@ local function exec_rules_in_coroutine()
         ngx.log(ngx.INFO,"box has no rules to exec")
         return false
     end
-
-    local rule_coroutine = {}
+ 
     local has_failed = false
 
     for i,rule in ipairs(rules_table) do
-        --ngx.log(ngx.NOTICE,"rules_table: ", cjson.encode(rule))
+        --ngx.log(ngx.NOTICE,"rule: ", cjson.encode(rule))
         --创建协程对象
-        ngx.log(ngx.DEBUG,rule["dev_type"].." coroutine")
-        rule_coroutine[i] = coroutine.create(exec_rule_group)
+        ngx.log(ngx.DEBUG,rule["dev_type"].."-"..rule["dev_id"].." coroutine")
+        local rule_exec_obj = {}
+        rule_exec_obj["coroutine"] = coroutine.create(exec_rule_group)
+        rule_exec_obj["rule"] = rule
+        rule_exec_obj["dev_type"] = rule["dev_type"]
+        rule_exec_obj["dev_id"] = rule["dev_id"]
+        rule_exec_obj["dev_channel"] = rule["dev_channel"]
+        rule_exec_obj["status"] = rule_run
+
+        table.insert(rule_exec_objs, rule_exec_obj)
     end
+    g_rule_common.clear_table(rules_table)
 
-    while next(rule_coroutine) ~= nil do
-        --ngx.log(ngx.DEBUG,"rule_coroutine cnt: ", #rule_coroutine)
-        for i=1,#rule_coroutine do
-            ngx.sleep(0.1)
-            --ngx.log(ngx.DEBUG,"resume rule: ", rules_table[i]["rule_uuid"])
-            local coroutinert, complete, msrvcode = coroutine.resume(rule_coroutine[i], rules_table[i])
-            --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
-
-            if complete == true then
-                --策略组执行完成
-                if msrvcode == true then
-                    ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule complete and success")
-                else
-                    ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule complete and fail")
-                    --有执行失败的策略，需要重试
-                    has_failed = true
-                end
-                --本条策略已不需要执行，从执行序列删除
-                table.remove(rule_coroutine, i)
-                table.remove(rules_table, i)
+    while next(rule_exec_objs) ~= nil do
+        ngx.log(ngx.DEBUG,"rule_exec_objs cnt: ", #rule_exec_objs)
+        for i=1,#rule_exec_objs do
+            if rule_exec_objs[i]["status"] == rule_stop then
+                --取消该策略执行，从执行序列删除
+                ngx.log(ngx.DEBUG,"cancel rule: ", rule_exec_objs[i]["rule"]["rule_uuid"])
+                local coroutinert, cancel_result = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_stop)
+                ngx.log(ngx.DEBUG,"cancel return: ", cancel_result)
+                table.remove(rule_exec_objs, i)
                 break
             else
-                --策略组执行未完成
-                --ngx.log(ngx.DEBUG,rules_table[i]["rule_uuid"].." exec rule not complete")
+                --唤醒策略并执行
+                ngx.log(ngx.DEBUG,"resume rule: ", rule_exec_objs[i]["rule"]["rule_uuid"])
+                local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
+                ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
+
+                if complete == true then
+                    --策略组执行完成
+                    if msrvcode == true then
+                        ngx.log(ngx.DEBUG,rule_exec_objs[i]["rule"]["rule_uuid"].." exec rule complete and success")
+                    else
+                        ngx.log(ngx.DEBUG,rule_exec_objs[i]["rule"]["rule_uuid"].." exec rule complete and fail")
+                        --有执行失败的策略，需要重试
+                        has_failed = true
+                    end
+                    --本条策略已不需要执行，从执行序列删除
+                    table.remove(rule_exec_objs, i)
+                    break
+                else
+                    --策略组执行未完成
+                    ngx.log(ngx.DEBUG,rule_exec_objs[i]["rule"]["rule_uuid"].." exec not complete")
+                end
+                ngx.sleep(0.05)
             end
         end
     end
@@ -333,7 +377,7 @@ local function rule_exec_end(best_rule, dev_type, dev_id, channel)
             g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
         elseif res[1]["rule_uuid"] ~= best_rule[1]["rule_uuid"] then
             --策略被更高优先级的替代或切换回低优先级，上一条上报结束
-            ngx.log(ngx.INFO,"exec rule with higher priority")
+            ngx.log(ngx.INFO,"exec rule with higher or lower priority")
             g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
         else
         
@@ -354,6 +398,13 @@ end
 
 --执行设备某个channel的策略
 function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
+    --检查该设备是否有策略在下发
+    local idle = m_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
+    if idle == false then
+        --忽略
+        return nil
+    end
+
     --选择最优的一条策略
     local ruletable, err = g_sql_app.query_rule_tbl_by_channel(dev_type, dev_id, channel)
     if err then
@@ -393,6 +444,29 @@ end
 
 --执行某个设备的策略
 function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+    --检测微服务是否在线
+    local rt = g_rule_common.check_dev_status(dev_type, dev_id, "online")
+    if rt == false then
+        ngx.log(ngx.NOTICE,"srv is offline, ignore rule! ")
+        --g_report_event.report_rule_exec_status(rule, "Start", 0, nil, nil)--上报?
+        --上线时会执行，不需要反错重试
+        return nil
+    end
+    --检测联动是否在执行
+    local rt = g_rule_common.check_dev_status(dev_type, dev_id, "linkage")
+    if rt == true then
+        ngx.log(ngx.NOTICE,"linkage rule running, ignore rule! ")
+        --这条策略本次不需要执行
+        return nil
+    end
+    --检测是否手动模式
+    local rt = g_rule_common.check_dev_status(dev_type, dev_id, "cmd")
+    if rt == true then
+        ngx.log(ngx.NOTICE,"cmd running, ignore rule! ")
+        --这条策略本次不需要执行
+        return nil
+    end
+
     --执行设备策略
     local dev_channel_array, dev_channel_cnt = query_device_channel(dev_type, dev_id)
     --ngx.log(ngx.INFO,"device channel cnt: ", dev_channel_cnt.." ".."device channel list :", cjson.encode(dev_channel_array))

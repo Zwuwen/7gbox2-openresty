@@ -494,7 +494,7 @@ end
 
 --策略执行  获取最优策略
 function g_orm_info_M.query_rule_tbl_by_channel(dev_type, dev_id, channel)
-	local sql_str = string.format("select * from (select * from run_rule_tbl where (trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d and start_date<=current_date and current_date<=end_date))  as result_date where ((start_time<=current_time and current_time<end_time) or (start_time>=end_time and ((start_time<=current_time and current_time<'24:00:00' and current_date!=end_date) or ('00:00:00'<=current_time and current_time<end_time and current_date!=start_date)))) order by priority ASC,start_time DESC,id ASC limit 1", dev_type, dev_id, channel)
+	local sql_str = string.format("select * from (select * from run_rule_tbl where (trim(dev_type)=\'%s\' and dev_id=%d and dev_channel=%d and start_date<=current_date and current_date<=end_date))  as result_date where ((start_time<=current_time and current_time<end_time) or (start_time>=end_time and ((start_time<=current_time and current_time<'24:00:00' and current_date!=end_date) or ('00:00:00'<=current_time and current_time<end_time and current_date!=start_date)))) order by priority ASC,start_time DESC,id DESC limit 1", dev_type, dev_id, channel)
 	--ngx.log(ngx.ERR," ",sql_str)
 	local res,err = db:query(sql_str)
 	return res,err

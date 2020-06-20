@@ -97,6 +97,14 @@ function m_rule_common.table_clone(object)
     return _copy(object)
 end
 
+--清空table
+function m_rule_common.clear_table(atable)
+    while next(atable) ~= nil do
+        --print("table cnt: ", #atable)
+        table.remove(atable)
+    end
+end
+
 -------------------------------------------------------------------------------------
 --计算自动执行时间策略的间隔时间
 -------------------------------------------------------------------------------------
