@@ -387,6 +387,13 @@ local function rule_exec_end(best_rule, dev_type, dev_id, channel)
             --策略被更高优先级的替代或切换回低优先级，上一条上报结束
             ngx.log(ngx.INFO,"exec rule with higher or lower priority")
             g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
+
+            --清除该channel原先的running为0，防止一些情况running为1导致不执行策略
+            local res,err = g_sql_app.update_rule_tbl_running(dev_type, dev_id, channel, 0)
+            if err then
+                ngx.log(ngx.ERR,"err msg: ",err)
+                return false
+            end
         else
         
         end

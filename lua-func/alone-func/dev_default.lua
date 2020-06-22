@@ -102,7 +102,7 @@ local function exec_dft_request(req_data)
     --等待ResultUpload
     local wait_time = 0
     while wait_time < 30 do
-        ngx.sleep(0.1)
+        --ngx.sleep(0.1)
         --ngx.log(ngx.DEBUG,"check rule result-upload: ", req_data["rule_uuid"].."  "..http_param_table["MsgId"])
         local msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
@@ -162,14 +162,14 @@ end
 --rt true: 设置成功或不需要设置
 --rt false: 设置失败
 local function check_and_set_channel_dft(dev_type, dev_id, channel)
-    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
-    local res,err = g_sql_app.query_table(sql_str)
+    --查看是否有可执行策略
+    local ruletable, err = g_sql_app.query_rule_tbl_by_channel(dev_type, dev_id, channel)
     if err then
         ngx.log(ngx.ERR,"postgresql io err: ",err)
         return nil
     end
 
-    if next(res) == nil then
+    if next(ruletable) == nil then
         --设备设置了时间策略，但是当前时间没有可执行策略，设为默认状态
         ngx.log(ngx.DEBUG,dev_type.."-"..dev_id.." has no rules to exec, set default")
         local set_dft_status = set_channel_dft(dev_type, dev_id, channel)
