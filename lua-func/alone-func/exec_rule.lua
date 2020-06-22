@@ -26,13 +26,18 @@ local rule_module_idle = true
 --rt: true  -- idle
 --rt: false -- 有策略执行
 function m_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
+    if next(rule_exec_objs) == nil then
+        return true
+    end
     ngx.log(ngx.DEBUG,"check rule_exec_objs cnt: ", #rule_exec_objs)
     for i,rule_exec_obj in ipairs(rule_exec_objs) do
         if (rule_exec_obj["dev_type"] == dev_type) and
             (rule_exec_obj["dev_id"] == dev_id) --and
             --(rule_exec_obj["dev_channel"] == channel)
         then
-            if rule_exec_obj["status"] == rule_run then
+            if (rule_exec_obj["status"] == rule_run) or     --正在下发
+                (rule_exec_obj["status"] == rule_stop)      --正在取消，取消后就已删除查不到
+            then
                 ngx.log(ngx.DEBUG, dev_type.."-"..dev_id.."-"..channel.." has rule executeing")
                 return false
             end
@@ -44,6 +49,9 @@ end
 
 --停止设备策略执行，释放协程
 function m_exec_rule.stop_device_rule_exec(dev_type, dev_id, channel)
+    if next(rule_exec_objs) == nil then
+        return
+    end
     for i,rule_exec_obj in ipairs(rule_exec_objs) do
         if (rule_exec_obj["dev_type"] == dev_type) and
             (rule_exec_obj["dev_id"] == dev_id) --and
