@@ -1,8 +1,9 @@
 --load module
-local g_rule_timer = require("alone-func.rule_timer")
+local g_rule_timer = require("rule-func.rule_timer")
 local g_exec_heart = require("init.init_heartbeat")
 local g_event_report = require("event-func.event_report")
 local g_cmd_handle_model = require("cmd-func.cmd_handle_model")
+local g_rule_handle_model = require("rule-func.rule_handle_model")
 local heart_time = 60
 local regular_report_time = 300
 local plat_report_time = 30
@@ -19,6 +20,13 @@ end
 local ok,err = ngx.timer.every(0.5, g_cmd_handle_model.cmd_handle_thread)
 if not ok then
     ngx.log(ngx.ERR,"cmd handle thread, err:", err)
+    return
+end
+
+--rule请求的异步处理
+local ok,err = ngx.timer.every(0.5, g_rule_handle_model.rule_handle_thread)
+if not ok then
+    ngx.log(ngx.ERR,"rule handle thread, err:", err)
     return
 end
 

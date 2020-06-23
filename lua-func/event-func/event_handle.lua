@@ -83,4 +83,4 @@ local function event_handle(request_method)
 end
 -------main function------------
 local request_method = ngx.var.request_method
-status = xpcall( event_handle, event_error_handle, request_method )
+local status = xpcall( event_handle, event_error_handle, request_method )

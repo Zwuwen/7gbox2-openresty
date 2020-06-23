@@ -1,23 +1,18 @@
---alone function
---restful parsing parameters
---version/rule/rule_uuid
+local m_rule_handle = {}
 
---const define
-local uri_len = 11
-local rule_pre_index = 1
-local rule_post_index = 11
-
+local g_rule_handle_body_table = {}
+local g_is_rule_handle_timer_running = false
 local dev_set = {}
 
 --load module
-local g_rule_common = require("alone-func.rule_common")
+local g_rule_common = require("rule-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
-local g_exec_rule = require("alone-func.exec_rule")
---local g_cmd_sync = require("alone-func.cmd_sync")
-local g_rule_timer = require("alone-func.rule_timer")
-local g_report_event = require("alone-func.rule_report_event")
---local g_linkage_sync = require("alone-func.linkage_sync")
+local g_exec_rule = require("rule-func.exec_rule")
+--local g_cmd_sync = require("rule-func.cmd_sync")
+local g_rule_timer = require("rule-func.rule_timer")
+local g_report_event = require("rule-func.rule_report_event")
+--local g_linkage_sync = require("rule-func.linkage_sync")
 local g_cmd_micro = require("cmd-func.cmd_micro")
 local report_event  = require("event-func.event_report")
 --function define
@@ -754,283 +749,149 @@ local function select_rule_group(all_json)
 end
 
 ---------------------------------------------------------------------------------
----------------------------生成请求的http响应数据--------------------------------
----------------------------------------------------------------------------------
-local function encode_req_sts_upload(msgid, errcode, msg, data_table)
-	local f_table = {}
-	local f_str = ''
-	
-	f_table["Token"] = "7GBox"
-	f_table["MsgId"] = msgid
-	f_table["Event"] = "ReqStsUpload"
-	local gw = g_sql_app.query_dev_info_tbl(0)
-	f_table["GW"] = gw[1]["sn"]
-	local payload = {}
-	payload["Result"] = errcode
-	payload["Descrip"] = msg
-	payload["Out"] = data_table
-	f_table["Payload"] = payload
-	
-	f_str = cjson.encode(f_table)
-	--ngx.log(ngx.ERR," ", f_str)
-	return f_str
-end
-
----------------------------------------------------------------------------------
 --------------------------------main function------------------------------------
 ---------------------------------------------------------------------------------
---check uri
-local request_method = ngx.var.request_method
-if request_method ~= "GET" and request_method ~= "POST" and request_method ~= "DELETE" and request_method ~= "PUT" then
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"method no support\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
-end
+local function http_method(request_method, request_body)
+	local all_json = cjson.decode(request_body)
+	local msg_id = all_json["MsgId"]
+	local payload_json = all_json["Payload"]
+	local linkage_ser = "RuleEngine"
+	local devops_ser = "DevopsEngine"
 
-local uri = ngx.var.uri
-local uri_sub = string.sub(uri,rule_pre_index,rule_post_index)
-if uri_sub ~= "/v0001/rule" then
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"uri prefix is error\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
-end
-
-if #uri ~= uri_len then
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"uri len is error\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
-end
-
---check body
-ngx.req.read_body()
-local request_body = ngx.req.get_body_data()
-
-local all_json = {}
-if pcall(cjson.decode, request_body) then
-	-- 没有错误
-	all_json = cjson.decode(request_body)
-else
-	-- 错误
-	ngx.log(ngx.ERR,"json format error")
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"json format error\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
-end
-
-if all_json["Token"] ~= nil then
-	if type(all_json["Token"]) ~= "string" then
-		ngx.log(ngx.ERR,"Token type err")
-		local json_str = '{\n\"errcode\":400,\n \"msg\":\"Token type err\",\n\"payload\":{}\n}'
-		ngx.say(json_str)
-		ngx.flush()
-		return
+	if request_method == "GET" then
+		local result = false
+		local data_table = {}
+		local data_str = ""
+		if payload_json["RuleType"] == "TimerRule" then
+			data_table, result = select_rule_group(request_body)
+			if result ~= 0 then
+				g_report_event.report_status(msg_id, result, 'Failure', data_table)
+			else
+				g_report_event.report_status(msg_id, result, 'Success', data_table)
+			end
+			return
+		elseif payload_json["RuleType"] == "LinkageRule" then
+			data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
+			local return_json = cjson.decode(data_str)
+			local gw = g_sql_app.query_dev_info_tbl(0)
+			return_json["GW"] = gw[1]["sn"]
+			local json_body = cjson.decode(request_body)
+			return_json["MsgId"] = json_body["MsgId"]
+			return_json["Event"] = "ResultUpload"
+			report_event.method_respone(return_json)
+			return
+		elseif payload_json["RuleType"] == "DevopsRule" then
+			data_str, result = g_cmd_micro.micro_get(devops_ser,request_body)
+			local return_json = cjson.decode(data_str)
+			local gw = g_sql_app.query_dev_info_tbl(0)
+			return_json["GW"] = gw[1]["sn"]
+			local json_body = cjson.decode(request_body)
+			return_json["MsgId"] = json_body["MsgId"]
+			return_json["Event"] = "ResultUpload"
+			report_event.method_respone(return_json)
+			return
+		end
+	elseif request_method == "POST" then
+		local result = false
+		local data_table = {}
+		local data_str = ""
+		if payload_json["RuleType"] == "TimerRule" then
+			data_table, result = create_rule_group(request_body)
+			if result ~= 0 then
+				g_report_event.report_status(msg_id, result, 'Failure', data_table)
+			else
+				g_report_event.report_status(msg_id, result, 'Success', data_table)
+			end
+			return
+		elseif payload_json["RuleType"] == "LinkageRule" then
+			data_str, result = g_cmd_micro.micro_post(linkage_ser,request_body)
+			if result == false then
+				local return_json = cjson.decode(data_str)
+				g_report_event.report_status(msg_id, return_json["Payload"]["Result"], return_json["Payload"]["Descrip"], {})
+			end
+			return
+		elseif payload_json["RuleType"] == "DevopsRule" then
+			data_str, result = g_cmd_micro.micro_post(devops_ser,request_body)
+			if result == false then
+				local return_json = cjson.decode(data_str)
+				g_report_event.report_status(msg_id, return_json["Payload"]["Result"], return_json["Payload"]["Descrip"], {})
+			end
+			return
+		end
+	elseif request_method == "PUT" then
+		local result = false
+		local data_table = {}
+		local data_str = ""
+		if payload_json["RuleType"] == "TimerRule" then
+			data_table, result = update_rule_group(request_body)
+			if result ~= 0 then
+				g_report_event.report_status(msg_id, result, 'Failure', data_table)
+			else
+				g_report_event.report_status(msg_id, result, 'Success', data_table)
+			end
+			return
+		elseif payload_json["RuleType"] == "LinkageRule" then
+			data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
+			if result == false then
+				local return_json = cjson.decode(data_str)
+				g_report_event.report_status(msg_id, return_json["Payload"]["Result"], return_json["Payload"]["Descrip"], {})
+			end
+			return
+		elseif payload_json["RuleType"] == "DevopsRule" then
+			data_str, result = g_cmd_micro.micro_put(devops_ser,request_body)
+			if result == false then
+				local return_json = cjson.decode(data_str)
+				g_report_event.report_status(msg_id, return_json["Payload"]["Result"], return_json["Payload"]["Descrip"], {})
+			end
+			return
+		end
+	elseif request_method == "DELETE" then
+		local result = false
+		local data_table = {}
+		local data_str = ""
+		if payload_json["RuleType"] == "TimerRule" then
+			data_table, result = delete_rule_group(request_body)
+			if result ~= 0 then
+				g_report_event.report_status(msg_id, result, 'Failure', data_table)
+			else
+				g_report_event.report_status(msg_id, result, 'Success', data_table)
+			end
+			return
+		elseif payload_json["RuleType"] == "LinkageRule" then
+			data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
+			if result == false then
+				local return_json = cjson.decode(data_str)
+				g_report_event.report_status(msg_id, return_json["Payload"]["Result"], return_json["Payload"]["Descrip"], {})
+			end
+			return
+		elseif payload_json["RuleType"] == "DevopsRule" then
+			data_str, result = g_cmd_micro.micro_delete(devops_ser,request_body)
+			if result == false then
+				local return_json = cjson.decode(data_str)
+				g_report_event.report_status(msg_id, return_json["Payload"]["Result"], return_json["Payload"]["Descrip"], {})
+			end
+			return
+		end
 	end
 end
 
-if all_json["MsgId"] ~= nil then
-	if type(all_json["MsgId"]) ~= "string" then
-		ngx.log(ngx.ERR,"MsgId type err")
-		local json_str = '{\n\"errcode\":400,\n \"msg\":\"MsgId type err\",\n\"payload\":{}\n}'
-		ngx.say(json_str)
-		ngx.flush()
-		return
-	end
-end
-local msg_id = all_json["MsgId"]
-
-if all_json["Payload"] == nil then
-	ngx.log(ngx.ERR,"Rule body has no Payload")
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"Rule body has no Payload\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
+function m_rule_handle.add_handle(request_method, request_body)
+	local request_table = {request_method, request_body}
+	table.insert(g_rule_handle_body_table, request_table)
 end
 
-local payload_json = all_json["Payload"]
+function m_rule_handle.rule_handle_thread()
+	if g_is_rule_handle_timer_running == false then
+		g_is_rule_handle_timer_running = true
+		for i, v in ipairs(g_rule_handle_body_table) do
+			local request_method = v[1]
+			local request_body = v[2]
 
-if type(payload_json["RuleType"]) ~= "string" then
-	ngx.log(ngx.ERR,"RuleType type err")
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"RuleType type err\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
-end
-if payload_json["RuleType"] ~= "TimerRule" and payload_json["RuleType"] ~= "LinkageRule" and payload_json["RuleType"] ~= "DevopsRule" then
-	ngx.log(ngx.ERR,"rule type error")
-	local json_str = '{\n\"errcode\":400,\n \"msg\":\"rule type error\",\n\"payload\":{}\n}'
-	ngx.say(json_str)
-	ngx.flush()
-	return
-end
-local linkage_ser = "RuleEngine"
-local devops_ser = "DevopsEngine"
-
---exec
-if request_method == "GET" then
-	local result = false
-	local data_table = {}
-	local data_str = ""
-	if payload_json["RuleType"] == "TimerRule" then
-		local json_str = encode_req_sts_upload(msg_id, 0, 'Success', data_table)
-		ngx.say(json_str)
-		ngx.flush()
-		data_table, result = select_rule_group(request_body)
-	elseif payload_json["RuleType"] == "LinkageRule" then
-		data_str, result = g_cmd_micro.micro_get(linkage_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return_json["Event"] = "ResultUpload"
-		report_event.method_respone(return_json)
-		return
-	elseif payload_json["RuleType"] == "DevopsRule" then
-		data_str, result = g_cmd_micro.micro_get(devops_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return_json["Event"] = "ResultUpload"
-		report_event.method_respone(return_json)
-		return
-	end
-	if result ~= 0 then
-		g_report_event.report_status(msg_id, result, 'Failure', data_table)
-	else
-		g_report_event.report_status(msg_id, result, 'Success', data_table)
-	end
-elseif request_method == "POST" then
-	local result = false
-	local data_table = {}
-	local data_str = ""
-	if payload_json["RuleType"] == "TimerRule" then
-		local json_str = encode_req_sts_upload(msg_id, 0, 'Success', data_table)
-		ngx.say(json_str)
-		ngx.flush()
-		data_table, result = create_rule_group(request_body)
-	elseif payload_json["RuleType"] == "LinkageRule" then
-		data_str, result = g_cmd_micro.micro_post(linkage_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return
-	elseif payload_json["RuleType"] == "DevopsRule" then
-		data_str, result = g_cmd_micro.micro_post(devops_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return
-	end
-
-	if result ~= 0 then
-		g_report_event.report_status(msg_id, result, 'Failure', data_table)
-	else
-		g_report_event.report_status(msg_id, result, 'Success', data_table)
-	end
-elseif request_method == "PUT" then
-	local result = false
-	local data_table = {}
-	local data_str = ""
-	if payload_json["RuleType"] == "TimerRule" then
-		local json_str = encode_req_sts_upload(msg_id, 0, 'Success', data_table)
-		ngx.say(json_str)
-		ngx.flush()
-		data_table, result = update_rule_group(request_body)
-	elseif payload_json["RuleType"] == "LinkageRule" then
-		data_str, result = g_cmd_micro.micro_put(linkage_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return
-	elseif payload_json["RuleType"] == "DevopsRule" then
-		data_str, result = g_cmd_micro.micro_put(devops_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return
-	end
-
-	if result ~= 0 then
-		g_report_event.report_status(msg_id, result, 'Failure', data_table)
-	else
-		g_report_event.report_status(msg_id, result, 'Success', data_table)
-	end
-elseif request_method == "DELETE" then
-	local result = false
-	local data_table = {}
-	local data_str = ""
-	if payload_json["RuleType"] == "TimerRule" then
-		local json_str = encode_req_sts_upload(msg_id, 0, 'Success', data_table)
-		ngx.say(json_str)
-		ngx.flush()
-		data_table, result = delete_rule_group(request_body)
-	elseif payload_json["RuleType"] == "LinkageRule" then
-		data_str, result = g_cmd_micro.micro_delete(linkage_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return
-	elseif payload_json["RuleType"] == "DevopsRule" then
-		data_str, result = g_cmd_micro.micro_delete(devops_ser,request_body)
-		local return_json = cjson.decode(data_str)
-		local gw = g_sql_app.query_dev_info_tbl(0)
-		return_json["GW"] = gw[1]["sn"]
-		return_json["Event"] = "ReqStsUpload"
-		local json_body = cjson.decode(request_body)
-		return_json["MsgId"] = json_body["MsgId"]
-		local res_str = cjson.encode(return_json)
-		ngx.say(res_str)
-		ngx.flush()
-		return
-	end
-
-	if result ~= 0 then
-		g_report_event.report_status(msg_id, result, 'Failure', data_table)
-	else
-		g_report_event.report_status(msg_id, result, 'Success', data_table)
+			http_method(request_method, request_body)
+			table.remove(g_rule_handle_body_table, i)
+		end
+		g_is_rule_handle_timer_running = false
 	end
 end
+
+return m_rule_handle

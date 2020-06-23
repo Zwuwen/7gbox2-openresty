@@ -2,13 +2,13 @@ local m_exec_rule = {}
 
 
 --load module
-local g_rule_common = require("alone-func.rule_common")
+local g_rule_common = require("rule-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
-local g_dev_dft = require("alone-func.dev_default")
-local g_tstatus = require("alone-func.time_rule_status")
-local g_report_event = require("alone-func.rule_report_event")
+local g_dev_dft = require("rule-func.dev_default")
+local g_tstatus = require("rule-func.time_rule_status")
+local g_report_event = require("rule-func.rule_report_event")
 
 --策略正在下发
 local rule_run = 1

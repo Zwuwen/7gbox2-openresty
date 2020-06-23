@@ -1,12 +1,12 @@
 local m_dev_dft = {}
 
 --load module
-local g_rule_common = require("alone-func.rule_common")
+local g_rule_common = require("rule-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_mydef = require("common.mydef.mydef_func")
-local g_tstatus = require("alone-func.time_rule_status")
-local g_report_event = require("alone-func.rule_report_event")
+local g_tstatus = require("rule-func.time_rule_status")
+local g_report_event = require("rule-func.rule_report_event")
 
 
 local function encode_common_dft(dev_type, dev_id, channel, req_data)
@@ -101,8 +101,8 @@ local function exec_dft_request(req_data)
 
     --等待ResultUpload
     local wait_time = 0
-    while wait_time < 30 do
-        --ngx.sleep(0.1)
+    while wait_time < 1000 do
+        ngx.sleep(0.01)
         --ngx.log(ngx.DEBUG,"check rule result-upload: ", req_data["rule_uuid"].."  "..http_param_table["MsgId"])
         local msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
@@ -125,7 +125,7 @@ local function exec_dft_request(req_data)
     end
     --ngx.log(ngx.DEBUG,"exec ", req_data["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
 
-    if wait_time >= 30 then
+    if wait_time >= 1000 then
         --超时
         ngx.log(ngx.ERR,"set default timeout")
         rt_value = false

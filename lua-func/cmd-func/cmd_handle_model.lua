@@ -6,7 +6,7 @@ local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_micro = require("cmd-func.cmd_micro")
 local g_event_report = require("event-func.event_report")
-local g_cmd_sync = require("alone-func.cmd_sync")
+local g_cmd_sync = require("rule-func.cmd_sync")
 local g_http = require("common.http.myhttp_M")
 
 local timer_dev_timer_method = {};

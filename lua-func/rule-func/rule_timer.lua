@@ -1,8 +1,8 @@
 local m_rule_timer = {}
 
 --load module
-local g_rule_common = require("alone-func.rule_common")
-local g_exec_rule = require("alone-func.exec_rule")
+local g_rule_common = require("rule-func.rule_common")
+local g_exec_rule = require("rule-func.exec_rule")
 
 
 --定时任务要执行的方法
