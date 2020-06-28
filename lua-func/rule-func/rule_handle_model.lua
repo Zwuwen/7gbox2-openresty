@@ -2,6 +2,7 @@ local m_rule_handle = {}
 
 local g_rule_handle_body_table = {}
 local g_is_rule_handle_timer_running = false
+local g_rule_handle_body_table_locker = false
 local dev_set = {}
 
 --load module
@@ -888,18 +889,59 @@ end
 
 function m_rule_handle.add_handle(request_method, request_body)
 	local request_table = {request_method, request_body}
-	table.insert(g_rule_handle_body_table, request_table)
+	
+	while true do
+		if not g_rule_handle_body_table_locker then
+			g_rule_handle_body_table_locker = true
+			table.insert(g_rule_handle_body_table, request_table)
+			g_rule_handle_body_table_locker = false
+			break
+		else
+			ngx.sleep(0.01)
+		end
+	end
+end
+
+local function remove_table(base, remove)
+    local new_table = {}
+    for k, v in ipairs(base) do
+        find_key = false
+        for rk, rv in ipairs(remove) do
+            if rv == k then
+                find_key = true
+                break
+            end
+        end
+        if not find_key then
+            table.insert(new_table, v)
+        end
+    end
+    return new_table
 end
 
 function m_rule_handle.rule_handle_thread()
 	if g_is_rule_handle_timer_running == false then
 		g_is_rule_handle_timer_running = true
+		local want_remove = {}
 		for i, v in ipairs(g_rule_handle_body_table) do
 			local request_method = v[1]
 			local request_body = v[2]
 
 			http_method(request_method, request_body)
-			table.remove(g_rule_handle_body_table, i)
+			table.insert(want_remove, i)
+		end
+		---remove table what has been handle
+		if next(want_remove) ~= nil then
+			while true do
+				if not g_rule_handle_body_table_locker then
+					g_rule_handle_body_table_locker = true
+					g_rule_handle_body_table = remove_table(g_rule_handle_body_table, want_remove)
+					g_rule_handle_body_table_locker = false
+					break
+				else
+					ngx.sleep(0.01)
+				end
+			end
 		end
 		g_is_rule_handle_timer_running = false
 	end
