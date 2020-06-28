@@ -399,9 +399,9 @@ function event_report_M.platform_heart_event()
     message["Event"] = "Heartbeat"
     local gw, res = g_sql_app.query_dev_info_tbl(0)
     if res then
-        body["GW"] = gw[1]["sn"]
+        message["GW"] = gw[1]["sn"]
     else
-        body["GW"] = ""
+        message["GW"] = ""
     end
     event_send_message(event_conf.url,cjson.encode(message))
     
