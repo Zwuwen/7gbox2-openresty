@@ -173,6 +173,13 @@ local function update_method(request_body)
 					local return_json = cjson.decode(res)
 					local res = creat_respone_message(return_json["Payload"]["Result"], return_json["Payload"]["Descrip"])
 					result_message_pack(json_body,res)
+				else
+					local return_json = cjson.decode(res)
+					if return_json["Payload"]["Result"] ~= 0 then
+						ngx.log(ngx.DEBUG,"micro post return true, but result not 0, return: ", res)
+						local res = creat_respone_message(return_json["Payload"]["Result"], return_json["Payload"]["Descrip"])
+						result_message_pack(json_body, res)
+					end
 				end
 			else
 				local res = creat_respone_message(3, "device is auto mode")
