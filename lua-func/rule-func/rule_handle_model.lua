@@ -9,6 +9,7 @@ local g_rule_common = require("rule-func.rule_common")
 local g_sql_app = require("common.sql.g_orm_info_M")
 local cjson = require("cjson")
 local g_exec_rule = require("rule-func.exec_rule")
+local g_dev_dft = require("rule-func.dev_default")
 --local g_cmd_sync = require("rule-func.cmd_sync")
 local g_rule_timer = require("rule-func.rule_timer")
 local g_report_event = require("rule-func.rule_report_event")
@@ -408,10 +409,20 @@ local function check_device_rule_idle_status(dev_type, dev_id, channel)
 	local wait_time = 0
 	while wait_time < 30 do
 		ngx.sleep(0.1)
-		local idle = g_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
-		if idle == false then
+		--策略下发
+		local exec_idle = g_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
+		if exec_idle == false then
 			g_exec_rule.stop_device_rule_exec(dev_type, dev_id, channel)
-		else
+		end
+		--检查默认状态设置
+		local dft_idle = g_dev_dft.get_device_dft_idle_status(dev_type, dev_id, channel)
+		if dft_idle == false then
+			g_dev_dft.stop_device_dft_exec(dev_type, dev_id, channel)
+		end
+
+		if (exec_idle == true) and
+			(dft_idle == true)
+		then
 			return "", 0
 		end
 		wait_time = wait_time + 1

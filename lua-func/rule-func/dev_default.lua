@@ -8,6 +8,93 @@ local g_mydef = require("common.mydef.mydef_func")
 local g_tstatus = require("rule-func.time_rule_status")
 local g_report_event = require("rule-func.rule_report_event")
 
+--正在设置默认
+local dft_run = 1
+--设置默认停止
+local dft_stop = 0
+
+local rule_dft_objs = {}
+
+local function insert_dft_table(dev_type, dev_id, channel)
+    local rule_dft_obj = {}
+    rule_dft_obj["dev_type"] = dev_type
+    rule_dft_obj["dev_id"] = dev_id
+    rule_dft_obj["dev_channel"] = channel
+    rule_dft_obj["status"] = dft_run
+    table.insert(rule_dft_objs, rule_dft_obj)
+end
+
+local function delete_dft_table(dev_type, dev_id, channel)
+    for i,rule_dft_obj in ipairs(rule_dft_objs) do
+        if (rule_dft_obj["dev_type"] == dev_type) and
+            (rule_dft_obj["dev_id"] == dev_id) --and
+            --(rule_dft_obj["dev_channel"] == channel)
+        then
+            table.remove(rule_dft_objs, i)
+        end
+    end
+end
+
+--获取设备策略运行状态
+--rt: true  -- idle
+--rt: false -- 正在设置默认
+function m_dev_dft.get_device_dft_idle_status(dev_type, dev_id, channel)
+    if next(rule_dft_objs) == nil then
+        return true
+    end
+    --ngx.log(ngx.DEBUG,"check rule_dft_objs cnt: ", #rule_dft_objs)
+    for i,rule_dft_obj in ipairs(rule_dft_objs) do
+        if (rule_dft_obj["dev_type"] == dev_type) and
+            (rule_dft_obj["dev_id"] == dev_id) --and
+            --(rule_dft_obj["dev_channel"] == channel)
+        then
+            if (rule_dft_obj["status"] == dft_run) or     --正在下发
+                (rule_dft_obj["status"] == dft_stop)      --正在取消，取消后就已删除查不到
+            then
+                ngx.log(ngx.DEBUG, dev_type.."-"..dev_id.."-"..channel.." has default executeing")
+                return false
+            end
+        end
+    end
+    ngx.log(ngx.DEBUG, dev_type.."-"..dev_id.."-"..channel.." has no default executeing")
+    return true
+end
+
+function m_dev_dft.get_device_dft_cancel_status(dev_type, dev_id, channel)
+    if next(rule_dft_objs) == nil then
+        return true
+    end
+    --ngx.log(ngx.DEBUG,"check rule_dft_objs cnt: ", #rule_dft_objs)
+    for i,rule_dft_obj in ipairs(rule_dft_objs) do
+        if (rule_dft_obj["dev_type"] == dev_type) and
+            (rule_dft_obj["dev_id"] == dev_id) --and
+            --(rule_dft_obj["dev_channel"] == channel)
+        then
+            if (rule_dft_obj["status"] == dft_stop) then
+                ngx.log(ngx.DEBUG, dev_type.."-"..dev_id.."-"..channel.." should cancel default")
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
+--停止设置默认执行
+function m_dev_dft.stop_device_dft_exec(dev_type, dev_id, channel)
+    if next(rule_dft_objs) == nil then
+        return
+    end
+    for i,rule_dft_obj in ipairs(rule_dft_objs) do
+        if (rule_dft_obj["dev_type"] == dev_type) and
+            (rule_dft_obj["dev_id"] == dev_id) --and
+            --(rule_dft_obj["dev_channel"] == channel)
+        then
+            ngx.log(ngx.DEBUG, "set "..dev_type.."-"..dev_id.."-"..channel.." default cancel")
+            rule_dft_obj["status"] = dft_stop
+        end
+    end 
+end
 
 local function encode_common_dft(dev_type, dev_id, channel, req_data)
     req_data["rule_uuid"] = dev_type.."_"..tostring(dev_id).."_default"
@@ -101,8 +188,8 @@ local function exec_dft_request(req_data)
 
     --等待ResultUpload
     local wait_time = 0
-    while wait_time < 1000 do
-        ngx.sleep(0.01)
+    while wait_time < 200 do
+        ngx.sleep(0.1)
         --ngx.log(ngx.DEBUG,"check rule result-upload: ", req_data["rule_uuid"].."  "..http_param_table["MsgId"])
         local msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
@@ -121,11 +208,20 @@ local function exec_dft_request(req_data)
             end
             break
         end
+
+        --检查是否取消设置默认
+        local cancel = m_dev_dft.get_device_dft_cancel_status(req_data["dev_type"], req_data["dev_id"], req_data["dev_channel"])
+        if cancel == true then
+            ngx.log(ngx.DEBUG,"cancel "..req_data["dev_type"].."-"..req_data["dev_id"].."-"..req_data["dev_channel"].." default")
+            rt_value = nil
+            break
+        end
+
         wait_time = wait_time + 1
     end
     --ngx.log(ngx.DEBUG,"exec ", req_data["rule_uuid"].."  "..http_param_table["MsgId"].." complete")
 
-    if wait_time >= 1000 then
+    if wait_time >= 200 then
         --超时
         ngx.log(ngx.ERR,"set default timeout")
         rt_value = false
@@ -149,7 +245,9 @@ local function set_channel_dft(dev_type, dev_id, channel)
         return false
     end
 
+    insert_dft_table(dev_type, dev_id, channel)
     local rt_value = exec_dft_request(dft_rule)
+    delete_dft_table(dev_type, dev_id, channel)
 
     --设置设备默认状态标志
     if rt_value == true then
