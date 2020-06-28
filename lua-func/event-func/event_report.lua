@@ -17,6 +17,7 @@ local g_rule_timer = require("rule-func.rule_timer")
 
 local g_result_upload_msg_table = {}
 local g_is_result_upload_timer_running = false
+local g_result_upload_msg_table_locker = false
 
 --通过HTTP推送数据
 local function event_send_message(url, message)
@@ -158,10 +159,28 @@ function event_report_M.attribute_change(body)
     rule_engine_trigger(body)
 end
 
+local function remove_table(base, remove)
+    new_table = {}
+    for k, v in ipairs(base) do
+        find_key = false
+        for rk, rv in ipairs(remove) do
+            if rv == k then
+                find_key = true
+                break
+            end
+        end
+        if not find_key then
+            table.insert(new_table, v)
+        end
+    end
+    return new_table
+end
+
 function event_report_M.method_respone_handle()
     if g_is_result_upload_timer_running == false then
         g_is_result_upload_timer_running = true
         --ngx.log(ngx.DEBUG,"method_respone_handle in, g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
+        want_remove = {}
         for k, v in ipairs(g_result_upload_msg_table) do
             ngx.log(ngx.DEBUG,"for g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
             local msg_id = v["MsgId"]
@@ -185,8 +204,21 @@ function event_report_M.method_respone_handle()
                 end
             end
             g_dev_status.del_control_method(msg_id)
-            g_result_upload_msg_table[k] = nil
+            table.insert(want_remove, k)
             ngx.log(ngx.DEBUG,"method_respone_handle end, MsgId: ",msg_id)
+        end
+        ---remove table what has been handle
+        if next(want_remove)~= nil then
+            while true do
+                if not g_result_upload_msg_table_locker then
+                    g_result_upload_msg_table_locker = true
+                    g_result_upload_msg_table = remove_table(g_result_upload_msg_table, want_remove)
+                    g_result_upload_msg_table_locker = false
+                    break
+                else
+                    ngx.sleep(0.01)
+                end
+            end
         end
         g_is_result_upload_timer_running = false
         --ngx.log(ngx.DEBUG,"method_respone_handle out")
@@ -201,9 +233,18 @@ function event_report_M.method_respone(body)
     else
         body["GW"] = ""
     end
-    ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size befor insert is ", table.maxn(g_result_upload_msg_table))
-    table.insert(g_result_upload_msg_table, body)
-    ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size after insert is ", table.maxn(g_result_upload_msg_table))
+    while true do
+        if not g_result_upload_msg_table_locker then
+            g_result_upload_msg_table_locker = true
+            ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size befor insert is ", table.maxn(g_result_upload_msg_table))
+            table.insert(g_result_upload_msg_table, body)
+            ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size after insert is ", table.maxn(g_result_upload_msg_table))
+            g_result_upload_msg_table_locker = false
+            break
+        else
+            ngx.sleep(0.01)
+        end
+    end
 end
 
 --------------------------联动事件------------------------------------
@@ -244,7 +285,7 @@ local function linkage_end(body)
         local update_json = {}
         update_json["linkage_rule"] = 0
         update_json["online"] = 1
-		g_sql_app.update_dev_status_tbl(dev_id,update_json)
+        g_sql_app.update_dev_status_tbl(dev_id,update_json)
         local dev_cmd_list = {}
         --匹配该设备id所有方法
         local key_str = string.format("%d-*",dev_id)
