@@ -70,8 +70,13 @@ function event_report_M.thing_online(devices)
 
         table.insert(dev_list,dev_dict)
     end
-    local gw,err= g_sql_app.query_dev_info_tbl(0)
-    local online_object = g_message.creat_online_object(gw[1]["sn"],dev_list)
+    local gw, res = g_sql_app.query_dev_info_tbl(0)
+    if res then
+        sn = gw[1]["sn"]
+    else
+        sn = ""
+    end
+    local online_object = g_message.creat_online_object(sn, dev_list)
     event_send_message(event_conf.url,cjson.encode(online_object))
 end
 
@@ -94,8 +99,13 @@ function event_report_M.thing_offline(devices)
         value["Attributes"] = attributes
         table.insert(dev_list,value)
     end
-    local gw = g_sql_app.query_dev_info_tbl(0)
-    local offline_object = g_message.creat_offline_object(gw[1]["sn"],dev_list)
+    local gw, res = g_sql_app.query_dev_info_tbl(0)
+    if res then
+        sn = gw[1]["sn"]
+    else
+        sn = ""
+    end
+    local offline_object = g_message.creat_offline_object(sn, dev_list)
     event_send_message(event_conf.url,cjson.encode(offline_object))
 end
 
@@ -138,8 +148,12 @@ local function rule_engine_trigger(body)
 end
 
 function event_report_M.attribute_change(body)
-    local gw = g_sql_app.query_dev_info_tbl(0)
-    body["GW"] = gw[1]["sn"]
+    local gw, res = g_sql_app.query_dev_info_tbl(0)
+    if res then
+        body["GW"] = gw[1]["sn"]
+    else
+        body["GW"] = ""
+    end
     event_send_message(event_conf.url,cjson.encode(body))
     rule_engine_trigger(body)
 end
@@ -181,8 +195,12 @@ end
 
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
-    local gw = g_sql_app.query_dev_info_tbl(0)
-    body["GW"] = gw[1]["sn"]
+    local gw, res = g_sql_app.query_dev_info_tbl(0)
+    if res then
+        body["GW"] = gw[1]["sn"]
+    else
+        body["GW"] = ""
+    end
     ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size befor insert is ", table.maxn(g_result_upload_msg_table))
     table.insert(g_result_upload_msg_table, body)
     ngx.log(ngx.DEBUG,"method_respone g_result_upload_msg_table size after insert is ", table.maxn(g_result_upload_msg_table))
@@ -256,8 +274,12 @@ function event_report_M.linkage_event(body)
     end
     playload["Out"] = nil
     body["Payload"] = playload
-    local gw = g_sql_app.query_dev_info_tbl(0)
-    body["GW"] = gw[1]["sn"]
+    local gw, res = g_sql_app.query_dev_info_tbl(0)
+    if res then
+        body["GW"] = gw[1]["sn"]
+    else
+        body["GW"] = ""
+    end
     event_send_message(event_conf.url,cjson.encode(body))
 end
 
@@ -334,8 +356,12 @@ function event_report_M.platform_heart_event()
     local message = {}
     message["Token"] = "7GBOX"
     message["Event"] = "Heartbeat"
-    local gw,err = g_sql_app.query_dev_info_tbl(0)
-    message["GW"] = gw[1]["sn"]
+    local gw, res = g_sql_app.query_dev_info_tbl(0)
+    if res then
+        body["GW"] = gw[1]["sn"]
+    else
+        body["GW"] = ""
+    end
     event_send_message(event_conf.url,cjson.encode(message))
     
 end
