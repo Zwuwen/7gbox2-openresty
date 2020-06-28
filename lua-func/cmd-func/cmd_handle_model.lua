@@ -227,7 +227,7 @@ end
 function m_cmd_handle.cmd_handle_thread()
 	if g_is_cmd_handle_timer_running == false then
 		g_is_cmd_handle_timer_running = true
-		want_remove = {}
+		local want_remove = {}
 		for k, v in ipairs(g_cmd_handle_body_table) do
 			request_method = v[1]
 			if request_method == "PUT" then
