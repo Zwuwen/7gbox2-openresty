@@ -22,6 +22,7 @@ timer_dev_timer_method["Speaker"] = speaker_timer_method
 local m_cmd_handle = {}
 local g_cmd_handle_body_table = {}
 local g_is_cmd_handle_timer_running = false
+local g_cmd_handle_body_table_locker = false
 
 
 -----------------cmd update method-----------------
@@ -187,12 +188,39 @@ end
 
 function m_cmd_handle.add_handle(request_method, request_body)
 	request_table = {request_method, request_body}
-	table.insert(g_cmd_handle_body_table, request_table)
+	while true do
+		if not g_cmd_handle_body_table_locker then
+            g_cmd_handle_body_table_locker = true
+            table.insert(g_cmd_handle_body_table, request_table)
+            g_cmd_handle_body_table_locker = false
+            break
+        else
+            ngx.sleep(0.01)
+		end
+	end
+end
+
+local function remove_table(base, remove)
+    new_table = {}
+    for k, v in ipairs(base) do
+        find_key = false
+        for rk, rv in ipairs(remove) do
+            if rv == k then
+                find_key = true
+                break
+            end
+        end
+        if not find_key then
+            table.insert(new_table, v)
+        end
+    end
+    return new_table
 end
 
 function m_cmd_handle.cmd_handle_thread()
 	if g_is_cmd_handle_timer_running == false then
 		g_is_cmd_handle_timer_running = true
+		want_remove = {}
 		for k, v in ipairs(g_cmd_handle_body_table) do
 			request_method = v[1]
 			if request_method == "PUT" then
@@ -204,8 +232,21 @@ function m_cmd_handle.cmd_handle_thread()
 			elseif request_method == "DELETE" then
 				delete_method(v[2])
 			end
-			table.remove(g_cmd_handle_body_table, k)
+			table.insert(want_remove, k)
 		end
+		---remove table what has been handle
+        if next(want_remove)~= nil then
+            while true do
+                if not g_cmd_handle_body_table_locker then
+                    g_cmd_handle_body_table_locker = true
+                    g_cmd_handle_body_table = remove_table(g_cmd_handle_body_table, want_remove)
+                    g_cmd_handle_body_table_locker = false
+                    break
+                else
+                    ngx.sleep(0.01)
+                end
+            end
+        end
 		g_is_cmd_handle_timer_running = false
 	end
 end
