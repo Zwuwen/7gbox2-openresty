@@ -9,6 +9,10 @@ local g_exec_rule = require("rule-func.exec_rule")
 function m_rule_timer.exec_rule_loop()
     --执行所有策略
     local has_failed = g_exec_rule.exec_all_rules()
+    if has_failed == "ignore" then
+        --忽略定时器
+        return
+    end
 
     m_rule_timer.refresh_rule_timer(has_failed)
 end
@@ -35,7 +39,7 @@ function m_rule_timer.refresh_rule_timer(has_failed)
 
     if has_failed == true then
         --有策略执行出错，重试时间
-        local retry_interval = 180
+        local retry_interval = 180 - (math.floor(ngx.now()) % 60)
         ngx.log(ngx.INFO,"next retry loop timeout: ",retry_interval)
     
         if ngx.worker.id() == 0 then

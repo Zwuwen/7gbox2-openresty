@@ -409,7 +409,6 @@ end
 local function check_device_rule_idle_status(dev_type, dev_id, channel)
 	local wait_time = 0
 	while wait_time < 30 do
-		ngx.sleep(0.1)
 		--策略下发
 		local exec_idle = g_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
 		if exec_idle == false then
@@ -427,6 +426,7 @@ local function check_device_rule_idle_status(dev_type, dev_id, channel)
 			return "", 0
 		end
 		wait_time = wait_time + 1
+		ngx.sleep(0.1)
 	end
 
 	if wait_time >= 30 then
@@ -905,7 +905,7 @@ end
 local function remove_table(base, remove)
     local new_table = {}
     for k, v in ipairs(base) do
-        find_key = false
+        local find_key = false
         for rk, rv in ipairs(remove) do
             if rv == k then
                 find_key = true

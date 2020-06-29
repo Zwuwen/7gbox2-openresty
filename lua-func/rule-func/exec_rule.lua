@@ -21,6 +21,9 @@ local rule_exec_objs = {}
 local exec_dev_only = true
 local rule_module_idle = true
 
+local first_time_stamp = 0
+local other_time_stamp = 0
+
 --function define
 --获取设备策略运行状态
 --rt: true  -- idle
@@ -535,10 +538,21 @@ end
 --执行所有类型设备的策略
 function m_exec_rule.exec_all_rules()
     while rule_module_idle == false do
-        ngx.sleep(0.5)
+        other_time_stamp = math.floor(ngx.now())
+        local interval = other_time_stamp - first_time_stamp
+        if interval > 10 then   --需要保证定时策略在0s+1s内开始执行
+            --等待上一次策略执行完后在执行
+            ngx.log(ngx.INFO,"new timer wait to exec exec_all_rules")
+            ngx.sleep(0.5)
+        else
+            --时间点接近的几个定时器，忽略
+            ngx.log(ngx.INFO,"near time, ignore timer for exec_all_rules")
+            return "ignore"
+        end
     end
     exec_dev_only = false
     rule_module_idle = false
+    first_time_stamp = math.floor(ngx.now())
 
     local dev_type_array, dev_type_cnt = query_device_type()
     --ngx.log(ngx.INFO,"device type cnt: ", dev_type_cnt.." ".."device type list :", cjson.encode(dev_type_array))
