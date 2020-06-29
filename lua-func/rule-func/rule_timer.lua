@@ -25,6 +25,16 @@ function m_rule_timer.refresh_rule_timer(has_failed)
         ngx.log(ngx.ERR,"get next rule loop timer fail ")
         interval = 10
     end
+
+    if has_failed == true then
+        --有策略执行出错，重试时间
+        local retry_interval = 180 - (math.floor(ngx.now()) % 60)
+        ngx.log(ngx.INFO,"next retry loop timeout: ",retry_interval)
+
+        if interval > retry_interval then
+            interval = retry_interval
+        end
+    end
     ngx.log(ngx.INFO,"next loop timeout: ",interval)
     --interval = 10
 
@@ -34,20 +44,6 @@ function m_rule_timer.refresh_rule_timer(has_failed)
         if not ok then
             ngx.log(ngx.ERR,"rule running failure")
             return
-        end
-    end
-
-    if has_failed == true then
-        --有策略执行出错，重试时间
-        local retry_interval = 180 - (math.floor(ngx.now()) % 60)
-        ngx.log(ngx.INFO,"next retry loop timeout: ",retry_interval)
-    
-        if ngx.worker.id() == 0 then
-            local ok,err = ngx.timer.at(retry_interval, m_rule_timer.exec_rule_loop)
-            if not ok then
-                ngx.log(ngx.ERR,"rule running failure")
-                return
-            end
         end
     end
 end
