@@ -72,7 +72,7 @@ function event_report_M.thing_online(devices)
         table.insert(dev_list,dev_dict)
     end
     local gw, res = g_sql_app.query_dev_info_tbl(0)
-    if res then
+    if gw[1] ~= nil then
         sn = gw[1]["sn"]
     else
         sn = ""
@@ -101,7 +101,7 @@ function event_report_M.thing_offline(devices)
         table.insert(dev_list,value)
     end
     local gw, res = g_sql_app.query_dev_info_tbl(0)
-    if res then
+    if gw[1] ~= nil then
         sn = gw[1]["sn"]
     else
         sn = ""
@@ -150,7 +150,7 @@ end
 
 function event_report_M.attribute_change(body)
     local gw, res = g_sql_app.query_dev_info_tbl(0)
-    if res then
+    if gw[1] ~= nil then
         body["GW"] = gw[1]["sn"]
     else
         body["GW"] = ""
@@ -228,7 +228,7 @@ end
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
     local gw, res = g_sql_app.query_dev_info_tbl(0)
-    if res then
+    if gw[1] ~= nil then
         body["GW"] = gw[1]["sn"]
     else
         body["GW"] = ""
@@ -316,7 +316,7 @@ function event_report_M.linkage_event(body)
     playload["Out"] = nil
     body["Payload"] = playload
     local gw, res = g_sql_app.query_dev_info_tbl(0)
-    if res then
+    if gw[1] ~= nil then
         body["GW"] = gw[1]["sn"]
     else
         body["GW"] = ""
@@ -398,7 +398,7 @@ function event_report_M.platform_heart_event()
     message["Token"] = "7GBOX"
     message["Event"] = "Heartbeat"
     local gw, res = g_sql_app.query_dev_info_tbl(0)
-    if res then
+    if gw[1] ~= nil then
         message["GW"] = gw[1]["sn"]
     else
         message["GW"] = ""
