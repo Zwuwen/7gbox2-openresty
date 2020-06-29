@@ -87,6 +87,8 @@ function event_report_M.thing_offline(devices)
     for key, value in pairs(devices) do
         local dev_id = value["DevId"]
         local dev_type = value["DevType"]
+        --上报策略结束
+        g_exec_rule.report_dev_end_status(dev_type, dev_id)
         --清除该设备时间策略运行状态
         g_exec_rule.clear_device_running(dev_type, dev_id)
         --清除设备默认状态标志

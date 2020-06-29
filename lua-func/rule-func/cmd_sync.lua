@@ -43,6 +43,9 @@ local function cmd_stop_rule_running(dev_type, dev_id)
     end
     --auto_mode == 0
     --策略
+    --上报策略结束
+    g_exec_rule.report_dev_end_status(dev_type, dev_id)
+
     local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
     local res, err = g_sql_app.exec_sql(sql_str)
     if err then

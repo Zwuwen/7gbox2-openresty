@@ -371,6 +371,43 @@ local function exec_rules_in_coroutine()
     return has_failed
 end
 
+function m_exec_rule.report_dev_end_status(dev_type, dev_id)
+    --获取设备channel数
+    local channel_cnt = g_rule_common.get_dev_channel_cnt(dev_type, dev_id)
+    if channel_cnt == nil then
+        ngx.log(ngx.ERR,"query dev_channel cnt err")
+        return
+    end
+
+    for i=1,channel_cnt do
+        local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, i)
+        local res,err = g_sql_app.query_table(sql_str)
+        if err then
+            ngx.log(ngx.ERR," ", res,err)
+            return
+        end
+    
+        if next(res) ~= nil then
+            --有正在运行策略，上报策略结束
+            ngx.log(ngx.INFO,"report "..dev_type.."-"..dev_id.."-"..i.."-"..res[1]["rule_uuid"].." end")
+            g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
+        else
+            local rt = g_rule_common.check_dev_status(dev_type, dev_id, "default")
+            if rt == true then
+                --默认状态，上报默认结束
+                local dft_rule = g_dev_dft.encode_device_dft(dev_type, dev_id, i)
+                if dft_rule == nil then
+                    ngx.log(ngx.ERR,"default rule nil")
+                    return
+                end
+    
+                ngx.log(ngx.INFO,"report "..dev_type.."-"..dev_id.."-"..i.." default end")
+                g_report_event.report_rule_exec_status(dft_rule, "End", 0, nil, nil)
+            end
+        end
+    end
+end
+
 --返回策略执行结束报文
 local function rule_exec_end(best_rule, dev_type, dev_id, channel)
     --查询是否有已运行的策略
