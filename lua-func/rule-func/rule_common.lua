@@ -105,6 +105,16 @@ function m_rule_common.clear_table(atable)
     end
 end
 
+--获取系统运行时间
+function m_rule_common.get_system_running_time()
+    local time_file = io.popen('cat /proc/uptime | awk -F. \'{run_second=$1;printf("%d",run_second)}\'')
+    local second_str = time_file:read("*all")
+    local second_num = tonumber(second_str)
+    ngx.log(ngx.INFO,"system running time: ", second_num)
+
+    return second_num
+end
+
 -------------------------------------------------------------------------------------
 --计算自动执行时间策略的间隔时间
 -------------------------------------------------------------------------------------

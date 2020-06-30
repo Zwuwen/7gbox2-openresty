@@ -31,6 +31,13 @@ if not ok then
 end
 
 --定时任务，执行策略
+--设置启动后清除运行状态的时间
+local ok,err = ngx.timer.at(3, g_rule_timer.clear_rule_running_on_restart)
+if not ok then
+    ngx.log(ngx.ERR,"rule clear running failure")
+    return
+end
+
 --设置启动后第一次执行定时任务的时间
 local ok,err = ngx.timer.at(5, g_rule_timer.exec_rule_loop)
 if not ok then

@@ -2,6 +2,7 @@ local m_rule_timer = {}
 
 --load module
 local g_rule_common = require("rule-func.rule_common")
+local g_sql_app = require("common.sql.g_orm_info_M")
 local g_exec_rule = require("rule-func.exec_rule")
 
 
@@ -43,6 +44,27 @@ function m_rule_timer.refresh_rule_timer(has_failed)
         local ok,err = ngx.timer.at(interval, m_rule_timer.exec_rule_loop)
         if not ok then
             ngx.log(ngx.ERR,"rule running failure")
+            return
+        end
+    end
+end
+
+function m_rule_timer.clear_rule_running_on_restart()
+    local second = g_rule_common.get_system_running_time()
+
+    --系统是刚刚启动时清除原来的运行状态
+    if second < 100 then
+        local sql_str = string.format("update run_rule_tbl set running=0")
+        local res, err = g_sql_app.exec_sql(sql_str)
+        if err then
+            ngx.log(ngx.ERR," ", res, err)
+            return
+        end
+
+        local sql_str = string.format("update dev_status_tbl set is_dft=0")
+        local res, err = g_sql_app.exec_sql(sql_str)
+        if err then
+            ngx.log(ngx.ERR," ", res, err)
             return
         end
     end

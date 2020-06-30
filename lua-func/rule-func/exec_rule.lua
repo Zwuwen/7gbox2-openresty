@@ -346,6 +346,13 @@ local function exec_rules_in_coroutine()
                 local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
                 ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
 
+                --唤醒出错
+                if coroutinert == false then
+                    ngx.log(ngx.ERR,"resume fail: ", coroutinert, complete)
+                    table.remove(rule_exec_objs, i)
+                    break
+                end
+
                 if complete == true then
                     --策略组执行完成
                     if msrvcode == true then
