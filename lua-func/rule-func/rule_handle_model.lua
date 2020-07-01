@@ -171,6 +171,7 @@ local function exec_rule_in_devices()
 	for i,device in ipairs(dev_set) do
 		local has_failed = g_exec_rule.exec_rules_by_devid(device["DevType"], device["DevId"])
 		table.insert(rt_value_table, has_failed)
+		table.remove(dev_set, i)
 	end
 
 	local failed = g_rule_common.is_include(true, rt_value_table)
@@ -240,7 +241,13 @@ local function delete_rule(req_payload)
 					return err, 1
 				end
 
-				add_to_dev_set(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
+				--上报原有策略执行结束
+				if qres[1]["running"] == 1 then
+					ngx.log(ngx.INFO,"report "..qres[1]["dev_type"].."-"..qres[1]["dev_id"].."-"..qres[1]["dev_channel"].."-"..qres[1]["rule_uuid"].." end")
+					g_report_event.report_rule_exec_status(qres[1], "End", 0, nil, nil)
+
+					add_to_dev_set(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
+				end				
 			end
 		end
 	elseif method == 'DelByDevId' then
@@ -259,6 +266,15 @@ local function delete_rule(req_payload)
 			if err then
 				ngx.log(ngx.ERR," ", res,err)
 				return err, 1
+			end
+		end		
+
+		--上报原有策略执行结束
+		for i,rule in ipairs(qres) do
+			if rule["running"] == 1 then
+				--有正在运行策略，上报策略结束
+				ngx.log(ngx.INFO,"report "..rule["dev_type"].."-"..rule["dev_id"].."-"..rule["dev_channel"].."-"..rule["rule_uuid"].." end")
+				g_report_event.report_rule_exec_status(rule, "End", 0, nil, nil)
 			end
 		end		
 

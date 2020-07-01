@@ -378,6 +378,17 @@ local function exec_rules_in_coroutine()
     return has_failed
 end
 
+function m_exec_rule.get_current_running_rule(dev_type, dev_id, channel)
+    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
+    local res,err = g_sql_app.query_table(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res,err)
+        return {}
+    end
+    return res
+end
+
+--离线，切换手动、联动上报整个设备策略结束
 function m_exec_rule.report_dev_end_status(dev_type, dev_id)
     --获取设备channel数
     local channel_cnt = g_rule_common.get_dev_channel_cnt(dev_type, dev_id)
@@ -387,12 +398,7 @@ function m_exec_rule.report_dev_end_status(dev_type, dev_id)
     end
 
     for i=1,channel_cnt do
-        local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, i)
-        local res,err = g_sql_app.query_table(sql_str)
-        if err then
-            ngx.log(ngx.ERR," ", res,err)
-            return
-        end
+        local res = m_exec_rule.get_current_running_rule(dev_type, dev_id, i)
     
         if next(res) ~= nil then
             --有正在运行策略，上报策略结束
@@ -418,42 +424,40 @@ end
 --返回策略执行结束报文
 local function rule_exec_end(best_rule, dev_type, dev_id, channel)
     --查询是否有已运行的策略
-    --best_rule为新的可执行策略
-    local sql_str = string.format("select * from run_rule_tbl where dev_type=\'%s\' and dev_id=%d and dev_channel=%d and running=1", dev_type, dev_id, channel)
-    local res,err = g_sql_app.query_table(sql_str)
-    if err then
-        ngx.log(ngx.ERR," ", res,err)
-        return nil
-    end
+    --best_rule为新的可执行策略 
+    local res = m_exec_rule.get_current_running_rule(dev_type, dev_id, channel)
 
     if next(res) ~= nil then
         if next(best_rule) == nil then
             --全部策略已结束，上报结束报文
             g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
-        elseif res[1]["rule_uuid"] ~= best_rule[1]["rule_uuid"] then
-            --策略被更高优先级的替代或切换回低优先级，上一条上报结束
-            ngx.log(ngx.INFO,"exec rule with higher or lower priority")
-            g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
-
-            --清除该channel原先的running为0，防止一些情况running为1导致不执行策略
-            local res,err = g_sql_app.update_rule_tbl_running(dev_type, dev_id, channel, 0)
-            if err then
-                ngx.log(ngx.ERR,"err msg: ",err)
-                return false
-            end
         else
-        
+            if res[1]["rule_uuid"] ~= best_rule[1]["rule_uuid"] then
+                --策略被更高优先级的替代或切换回低优先级，上一条上报结束
+                ngx.log(ngx.INFO,"exec rule with higher or lower priority")
+                g_report_event.report_rule_exec_status(res[1], "End", 0, nil, nil)
+
+                --清除该channel原先的running为0，防止一些情况running为1导致不执行策略
+                local res,err = g_sql_app.update_rule_tbl_running(dev_type, dev_id, channel, 0)
+                if err then
+                    ngx.log(ngx.ERR,"err msg: ",err)
+                    return false
+                end
+            end
         end
     else
         if next(best_rule) ~= nil then
             --可执行策略从无到有，上报默认结束
-            local dft_rule = g_dev_dft.encode_device_dft(dev_type, dev_id, channel)
-            if dft_rule == nil then
-                ngx.log(ngx.ERR,"default rule nil")
-                return nil
-            end
+            local rt = g_rule_common.check_dev_status(dev_type, dev_id, "default")
+            if rt == true then
+                local dft_rule = g_dev_dft.encode_device_dft(dev_type, dev_id, channel)
+                if dft_rule == nil then
+                    ngx.log(ngx.ERR,"default rule nil")
+                    return nil
+                end
 
-            g_report_event.report_rule_exec_status(dft_rule, "End", 0, nil, nil)
+                g_report_event.report_rule_exec_status(dft_rule, "End", 0, nil, nil)
+            end
         end
     end
 end
