@@ -162,9 +162,9 @@ function event_report_M.attribute_change(body)
 end
 
 local function remove_table(base, remove)
-    new_table = {}
+    local new_table = {}
     for k, v in ipairs(base) do
-        find_key = false
+        local find_key = false
         for rk, rv in ipairs(remove) do
             if rv == k then
                 find_key = true

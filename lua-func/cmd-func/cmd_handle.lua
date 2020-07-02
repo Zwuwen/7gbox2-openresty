@@ -45,5 +45,5 @@ end
 -------main function------------
 
 local request_method = ngx.var.request_method
-status = xpcall( request_cmd_handle, request_error_handle, request_method )
+local status = xpcall( request_cmd_handle, request_error_handle, request_method )
 

@@ -103,7 +103,7 @@ local function update_method(request_body)
 		return
 	end
 
-	result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
+	local result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
 	if result[1] ~= nil then
 		if (result[1]["online"] == 0) then
 			local res = creat_respone_message(15, "Device offline")
@@ -194,7 +194,7 @@ local function update_method(request_body)
 end
 
 function m_cmd_handle.add_handle(request_method, request_body)
-	request_table = {request_method, request_body}
+	local request_table = {request_method, request_body}
 	while true do
 		if not g_cmd_handle_body_table_locker then
             g_cmd_handle_body_table_locker = true
@@ -208,9 +208,9 @@ function m_cmd_handle.add_handle(request_method, request_body)
 end
 
 local function remove_table(base, remove)
-    new_table = {}
+    local new_table = {}
     for k, v in ipairs(base) do
-        find_key = false
+        local find_key = false
         for rk, rv in ipairs(remove) do
             if rv == k then
                 find_key = true
@@ -229,7 +229,7 @@ function m_cmd_handle.cmd_handle_thread()
 		g_is_cmd_handle_timer_running = true
 		local want_remove = {}
 		for k, v in ipairs(g_cmd_handle_body_table) do
-			request_method = v[1]
+			local request_method = v[1]
 			if request_method == "PUT" then
 				update_method(v[2])
 			elseif request_method == "GET" then
