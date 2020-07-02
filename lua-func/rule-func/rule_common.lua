@@ -130,12 +130,12 @@ function m_rule_common.get_next_loop_interval()
     local stime_table,err = g_sql_app.query_table(sql_stime)
     if err then
         ngx.log(ngx.ERR," ", err)
-        return 0,false
+        return nil,false
     end
     local etime_table,err = g_sql_app.query_table(sql_etime)
     if err then
         ngx.log(ngx.ERR," ", err)
-        return 0,false
+        return nil,false
     end
 
     --start_time，end_time距当前时间转换成s
@@ -149,7 +149,7 @@ function m_rule_common.get_next_loop_interval()
             local stime,err = g_sql_app.query_table(sql_ssec)
             if err then
                 ngx.log(ngx.ERR," ", err)
-                return 0,false
+                return nil,false
             end
             start_interval = hours24 - stime[1]["date_part"]
         end
@@ -159,7 +159,7 @@ function m_rule_common.get_next_loop_interval()
             local etime,err = g_sql_app.query_table(sql_esec)
             if err then
                 ngx.log(ngx.ERR," ", err)
-                return 0,false
+                return nil,false
             end
             end_interval   = hours24 - etime[1]["date_part"]
         end
@@ -180,7 +180,7 @@ function m_rule_common.get_next_loop_interval()
         local rule_table,err = g_sql_app.query_table(sql_rule)
         if err then
             ngx.log(ngx.ERR," ", err)
-            return 0,false
+            return nil,false
         end
         if (next(rule_table) ~= nil) then
             --日期内有策略，但在次日
@@ -188,13 +188,13 @@ function m_rule_common.get_next_loop_interval()
             local time,err = g_sql_app.query_table(sql_sec)
             if err then
                 ngx.log(ngx.ERR," ", err)
-                return 0,false
+                return nil,false
             end
             
             interval = hours24 - time[1]["date_part"]
         else
             --日期内无策略
-            interval = 99999
+            return nil, true
         end
     end
 
