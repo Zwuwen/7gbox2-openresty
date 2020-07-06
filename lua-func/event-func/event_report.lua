@@ -47,8 +47,20 @@ function event_report_M.thing_online(devices)
         local dev_id = value["DevId"]
         local dev_type = value["DevType"]
         --执行该设备的时间策略
-        local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id, false)
-	--更新定时任务间隔
+        local has_failed = false
+        local rty_cnt = 0
+        while rty_cnt < 3 do
+            has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id, false)
+            if has_failed ~= true then
+                --没有失败
+                ngx.log(ngx.ERR,dev_type.."-"..dev_id.." online exec rule success")
+                break
+            end
+            ngx.sleep(3)
+            rty_cnt = rty_cnt + 1
+            ngx.log(ngx.ERR,dev_type.."-"..dev_id.." online exec rule fail")
+        end
+    	--更新定时任务间隔
         g_rule_timer.refresh_rule_timer(has_failed)
         
         --上报属性
