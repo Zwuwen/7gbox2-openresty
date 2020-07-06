@@ -91,7 +91,7 @@ local function linkage_restore_rule_running(dev_type, dev_id)
     end
     --linkage_rule == 0
     --执行设备的策略
-    local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+    local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id, false)
     --更新定时任务间隔
     g_rule_timer.refresh_rule_timer(has_failed)
     return true

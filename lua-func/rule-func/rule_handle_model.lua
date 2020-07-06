@@ -168,10 +168,17 @@ local function exec_rule_in_devices()
 	local rt_value_table = {}
 	ngx.log(ngx.DEBUG,"exec dev_set: ", cjson.encode(dev_set))
 
-	for i,device in ipairs(dev_set) do
-		local has_failed = g_exec_rule.exec_rules_by_devid(device["DevType"], device["DevId"])
-		table.insert(rt_value_table, has_failed)
-		table.remove(dev_set, i)
+	while next(dev_set) ~= nil do
+		for i,device in ipairs(dev_set) do
+			local has_other_dev = false
+			if #dev_set > 1 then
+				has_other_dev = true
+			end
+			local has_failed = g_exec_rule.exec_rules_by_devid(device["DevType"], device["DevId"], has_other_dev)
+			table.insert(rt_value_table, has_failed)
+			table.remove(dev_set, i)
+			break
+		end
 	end
 
 	local failed = g_rule_common.is_include(true, rt_value_table)

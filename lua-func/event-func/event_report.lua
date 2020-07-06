@@ -47,7 +47,7 @@ function event_report_M.thing_online(devices)
         local dev_id = value["DevId"]
         local dev_type = value["DevType"]
         --执行该设备的时间策略
-        local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+        local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id, false)
 	--更新定时任务间隔
         g_rule_timer.refresh_rule_timer(has_failed)
         

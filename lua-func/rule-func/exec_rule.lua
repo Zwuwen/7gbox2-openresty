@@ -509,7 +509,7 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
 end
 
 --执行某个设备的策略
-function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
+function m_exec_rule.exec_rules_by_devid(dev_type, dev_id, has_other_dev)
     --检测微服务是否在线
     local rt = g_rule_common.check_dev_status(dev_type, dev_id, "online")
     if rt == false then
@@ -554,6 +554,11 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id)
 
     local has_failed
     if exec_dev_only then
+        if has_other_dev == true then
+            --还有其他设备，等所有设备策略都选好后再一起执行
+            return nil
+        end
+
         ngx.log(ngx.INFO,"exec rules in device level by coroutine")
         has_failed = exec_rules_in_coroutine()
 
@@ -579,7 +584,7 @@ function m_exec_rule.exec_rules_by_type(dev_type)
 
     for i=1,dev_id_cnt do
         ngx.log(ngx.INFO,"select channel in device: ",dev_id_array[i])
-        m_exec_rule.exec_rules_by_devid(dev_type, dev_id_array[i])
+        m_exec_rule.exec_rules_by_devid(dev_type, dev_id_array[i], false)
     end
 end
 
