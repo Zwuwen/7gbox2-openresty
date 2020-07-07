@@ -357,7 +357,10 @@ local function select_rule(req_payload)
 				for j,w in ipairs(uuid_table) do
 					uuid_obj = w
 				end
-				f_rule_array[i] = g_rule_common.db_attr_to_display(uuid_obj)
+				if uuid_obj["priority"] ~= g_rule_common.cmd_priority then
+					--排除自动模式下的手动命令
+					table.insert(f_rule_array, g_rule_common.db_attr_to_display(uuid_obj))
+				end
 			end
 		end
 	elseif f_json_param["Devices"] ~= nil then
@@ -389,7 +392,9 @@ local function select_rule(req_payload)
 			else
 				local dev_obj = {}
 				for j,w in ipairs(dev_table) do
-					dev_obj[j] = g_rule_common.db_attr_to_display(w)
+					if w["priority"] ~= g_rule_common.cmd_priority then
+						table.insert(dev_obj, g_rule_common.db_attr_to_display(w))
+					end
 				end
 				table.insert(f_rule_array, dev_obj)
 			end	
@@ -412,7 +417,9 @@ local function select_rule(req_payload)
 				--数据库为空
 			else
 				for i,w in ipairs(all_table) do
-					f_rule_array[i] = g_rule_common.db_attr_to_display(w)
+					if w["priority"] ~= g_rule_common.cmd_priority then
+						table.insert(f_rule_array, g_rule_common.db_attr_to_display(w))
+					end
 				end
 			end
 		else

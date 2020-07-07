@@ -159,6 +159,16 @@ local function query_device_channel(dev_type, dev_id)
     return dev_channel_array, dev_channel_cnt
 end
 
+--删除执行完的自动模式下手动命令(priority==8)
+local function delete_cmd_in_auto_mode()
+    local sql_str = string.format("delete from run_rule_tbl where priority=%d and running=0", g_rule_common.cmd_priority)
+    local res, err = g_sql_app.exec_sql(sql_str)
+    if err then
+        ngx.log(ngx.ERR," ", res, err)
+        return false
+    end
+end
+
 --
 function m_exec_rule.clear_device_running(dev_type, dev_id)
     local sql_str = string.format("update run_rule_tbl set running=0 where dev_type=\'%s\' and dev_id=%d", dev_type, dev_id)
@@ -213,6 +223,8 @@ local function update_rule_run_status(rule_obj)
         ngx.log(ngx.ERR," ",res.."  err msg: ",err)
         return false
     end
+
+    delete_cmd_in_auto_mode()
 
     --清除设备默认状态标志
     g_rule_common.set_dev_dft_flag(rule_obj["dev_type"], rule_obj["dev_id"], 0)
@@ -490,6 +502,8 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
             ngx.log(ngx.ERR," ",res.."  err msg: ",err)
             return false
         end
+
+        delete_cmd_in_auto_mode()
     else
         --dev_type-dev_id-dev_channel有可执行的策略
         for i,rule in ipairs(ruletable) do

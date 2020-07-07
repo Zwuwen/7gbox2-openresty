@@ -1,7 +1,7 @@
 local m_rule_common = {}
 
 --手动命令的优先级定义
---m_rule_common.cmd_priority = 1
+m_rule_common.cmd_priority = 8
 --时间策略最大优先级定义
 m_rule_common.time_priority_h = 8
 m_rule_common.time_priority_l = 13
