@@ -799,6 +799,7 @@ local function http_method(request_method, request_body)
 	local payload_json = all_json["Payload"]
 	local linkage_ser = "RuleEngine"
 	local devops_ser = "DevopsEngine"
+	ngx.log(ngx.INFO,"exec request: ", msg_id)
 
 	if request_method == "GET" then
 		local result = false
@@ -924,6 +925,9 @@ function m_rule_handle.add_handle(request_method, request_body)
 		if not g_rule_handle_body_table_locker then
 			g_rule_handle_body_table_locker = true
 			table.insert(g_rule_handle_body_table, request_table)
+			local all_json = cjson.decode(request_body)
+			local msg_id = all_json["MsgId"]
+			ngx.log(ngx.INFO,"add request: ", msg_id)
 			g_rule_handle_body_table_locker = false
 			break
 		else
@@ -939,6 +943,7 @@ local function remove_table(base, remove)
         for rk, rv in ipairs(remove) do
             if rv == k then
                 find_key = true
+                ngx.log(ngx.INFO,"delete request: ", cjson.decode(v[2])["MsgId"])
                 break
             end
         end

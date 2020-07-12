@@ -343,7 +343,7 @@ local function exec_rules_in_coroutine()
     g_rule_common.clear_table(rules_table)
 
     while next(rule_exec_objs) ~= nil do
-        ngx.log(ngx.DEBUG,"rule_exec_objs cnt: ", #rule_exec_objs)
+        --ngx.log(ngx.DEBUG,"rule_exec_objs cnt: ", #rule_exec_objs)
         for i=1,#rule_exec_objs do
             if rule_exec_objs[i]["status"] == rule_stop then
                 --取消该策略执行，从执行序列删除
@@ -354,9 +354,9 @@ local function exec_rules_in_coroutine()
                 break
             else
                 --唤醒策略并执行
-                ngx.log(ngx.DEBUG,"resume rule: ", rule_exec_objs[i]["rule"]["rule_uuid"])
+                --ngx.log(ngx.DEBUG,"resume rule: ", rule_exec_objs[i]["rule"]["rule_uuid"])
                 local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
-                ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
+                --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
 
                 --唤醒出错
                 if coroutinert == false then
@@ -379,7 +379,7 @@ local function exec_rules_in_coroutine()
                     break
                 else
                     --策略组执行未完成
-                    ngx.log(ngx.DEBUG,rule_exec_objs[i]["rule"]["rule_uuid"].." exec not complete")
+                    --ngx.log(ngx.DEBUG,rule_exec_objs[i]["rule"]["rule_uuid"].." exec not complete")
                 end
                 ngx.sleep(0.05)
             end
