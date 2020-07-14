@@ -159,7 +159,7 @@ local function update_method(request_body)
 			local res = creat_respone_message(1,"Fail")
 			result_message_pack(json_body,res)
 		end
-	elseif json_body["Method"] == "CancleLinkageRule" then
+	elseif json_body["Method"] == "CancelLinkageRule" then
 		local res,status = g_micro.micro_delete("RuleEngine",request_body)
 		result_message_pack(json_body,res)
 	else

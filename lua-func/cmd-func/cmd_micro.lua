@@ -13,7 +13,7 @@ local function get_url_suffix(request_body)
         return "event"
     elseif body["Event"] == "Alarm" then
         return "event"
-    elseif body["Method"] == "CancleLinkageRule" then
+    elseif body["Method"] == "CancelLinkageRule" then
         return "event"
     elseif body["Payload"] ~= nil and body["Payload"]["RuleType"] == "LinkageRule" then
         return "rule"
