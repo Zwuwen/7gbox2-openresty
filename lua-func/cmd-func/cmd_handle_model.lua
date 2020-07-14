@@ -97,23 +97,26 @@ local function update_method(request_body)
 	local json_body = cjson.decode(request_body)
 	ngx.log(ngx.DEBUG,"cmd put, msgid: ", json_body["MsgId"])
 
-	if json_body["DevType"]==nil and json_body["DevId"]==nil and json_body["DevChannel"]==nil and json_body["Method"]==nil then
+	if (json_body["DevType"]==nil or json_body["DevId"]==nil or json_body["DevChannel"]==nil or json_body["Method"]==nil)
+	and json_body["Method"] ~= "CancelLinkageRule" then
 		local res = creat_respone_message(2, "Parameter error")
 		result_message_pack(json_body, res)
 		return
 	end
 
-	local result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
-	if result[1] ~= nil then
-		if (result[1]["online"] == 0) then
-			local res = creat_respone_message(15, "Device offline")
+	if json_body["Method"] ~= "CancelLinkageRule" then
+		local result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
+		if result[1] ~= nil then
+			if (result[1]["online"] == 0) then
+				local res = creat_respone_message(15, "Device offline")
+				result_message_pack(json_body, res)
+				return
+			end
+		else
+			local res = creat_respone_message(1, "Query device status failed")
 			result_message_pack(json_body, res)
 			return
 		end
-	else
-		local res = creat_respone_message(1, "Query device status failed")
-		result_message_pack(json_body, res)
-		return
 	end
 
 	if json_body["Method"] == "ResetToAuto" then
