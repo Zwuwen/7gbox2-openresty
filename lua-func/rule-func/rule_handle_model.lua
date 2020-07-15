@@ -799,7 +799,7 @@ local function http_method(request_method, request_body)
 	local payload_json = all_json["Payload"]
 	local linkage_ser = "RuleEngine"
 	local devops_ser = "DevopsEngine"
-	ngx.log(ngx.INFO,"exec request: ", msg_id)
+	ngx.log(ngx.INFO,"exec pendding timerule http request: ", msg_id)
 
 	if request_method == "GET" then
 		local result = false
@@ -924,10 +924,15 @@ function m_rule_handle.add_handle(request_method, request_body)
 	while true do
 		if not g_rule_handle_body_table_locker then
 			g_rule_handle_body_table_locker = true
-			table.insert(g_rule_handle_body_table, request_table)
 			local all_json = cjson.decode(request_body)
 			local msg_id = all_json["MsgId"]
-			ngx.log(ngx.INFO,"add request: ", msg_id)
+			if #g_rule_handle_body_table >= 100 then
+				ngx.log(ngx.ERR," add pendding timerule http request fail, pendding too much")
+				g_report_event.report_status(msg_id, 1, 'Pending task too much, retry later', {})
+			else
+				table.insert(g_rule_handle_body_table, request_table)
+				ngx.log(ngx.INFO," add pendding timerule http request: "..msg_id..", pendding length: +1: "..#g_rule_handle_body_table)
+			end
 			g_rule_handle_body_table_locker = false
 			break
 		else
@@ -936,45 +941,22 @@ function m_rule_handle.add_handle(request_method, request_body)
 	end
 end
 
-local function remove_table(base, remove)
-    local new_table = {}
-    for k, v in ipairs(base) do
-        local find_key = false
-        for rk, rv in ipairs(remove) do
-            if rv == k then
-                find_key = true
-                ngx.log(ngx.INFO,"delete request: ", cjson.decode(v[2])["MsgId"])
-                break
-            end
-        end
-        if not find_key then
-            table.insert(new_table, v)
-        end
-    end
-    return new_table
-end
-
 function m_rule_handle.rule_handle_thread()
 	if g_is_rule_handle_timer_running == false then
 		g_is_rule_handle_timer_running = true
-		local want_remove = {}
-		for i, v in ipairs(g_rule_handle_body_table) do
-			local request_method = v[1]
-			local request_body = v[2]
+		while next(g_rule_handle_body_table) ~= nil do
+			local rule_handle_body = g_rule_handle_body_table[1]
+			local request_method = rule_handle_body[1]
+			local request_body = rule_handle_body[2]
 
 			http_method(request_method, request_body)
-			table.insert(want_remove, i)
-		end
-		---remove table what has been handle
-		if next(want_remove) ~= nil then
 			while true do
 				if not g_rule_handle_body_table_locker then
 					g_rule_handle_body_table_locker = true
-					g_rule_handle_body_table = remove_table(g_rule_handle_body_table, want_remove)
+					table.remove(g_rule_handle_body_table, 1)
+					ngx.log(ngx.INFO,"            delete executed timerule http request: "..cjson.decode(request_body)["MsgId"]..", pendding length: -1: "..#g_rule_handle_body_table)
 					g_rule_handle_body_table_locker = false
 					break
-				else
-					ngx.sleep(0.01)
 				end
 			end
 		end
