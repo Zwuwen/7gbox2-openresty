@@ -17,8 +17,12 @@ local rule_stop = 0
 
 local rules_table = {}
 local rule_exec_objs = {}
+local access_rules_table_locker = false
+local access_rule_exec_objs_locker = false
 
 local exec_dev_only = true
+local exec_in_dev_level = true
+local add_extra_coroutine = false
 local rule_module_idle = true
 
 local first_time_stamp = 0
@@ -32,7 +36,7 @@ function m_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
     if next(rule_exec_objs) == nil then
         return true
     end
-    ngx.log(ngx.DEBUG,"check rule_exec_objs cnt: ", #rule_exec_objs)
+    ngx.log(ngx.DEBUG,"check rule exec objs cnt: ", #rule_exec_objs)
     for i,rule_exec_obj in ipairs(rule_exec_objs) do
         if (rule_exec_obj["dev_type"] == dev_type) and
             (rule_exec_obj["dev_id"] == dev_id) --and
@@ -254,13 +258,13 @@ local function exec_a_method(rule)
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
-            --ngx.sleep(5)    --用于测试正在下发策略时有新策略要执行，冲突的情况
             --本条method ResultUpload未收到，继续检查
             local cancel = coroutine.yield(false, false)
             if cancel == rule_stop then
                 --取消策略下发信号
                 return 1024, "cancel"
             end
+            --ngx.sleep(10)    --用于测试正在下发策略时有新策略要执行，冲突的情况
         else
             --收到，返回结果
             break
@@ -318,13 +322,12 @@ local function exec_rule_group(rule)
     return true, true
 end
 
-local function exec_rules_in_coroutine()
+--rules_table --> rule_exec_objs
+local function create_rule_exec_objs()
     if next(rules_table) == nil then
         ngx.log(ngx.INFO,"box has no rules to exec")
-        return false
+        return
     end
- 
-    local has_failed = false
 
     for i,rule in ipairs(rules_table) do
         --ngx.log(ngx.NOTICE,"rule: ", cjson.encode(rule))
@@ -338,30 +341,65 @@ local function exec_rules_in_coroutine()
         rule_exec_obj["dev_channel"] = rule["dev_channel"]
         rule_exec_obj["status"] = rule_run
 
-        table.insert(rule_exec_objs, rule_exec_obj)
+        while true do
+            if access_rule_exec_objs_locker == false then
+                access_rule_exec_objs_locker = true
+                table.insert(rule_exec_objs, rule_exec_obj)
+                ngx.log(ngx.DEBUG,"add new rule_exec_objs: ", #rule_exec_objs)
+                access_rule_exec_objs_locker = false
+                break
+            end
+        end
     end
-    g_rule_common.clear_table(rules_table)
+    while true do
+        if access_rules_table_locker == false then
+            access_rules_table_locker = true
+            g_rule_common.clear_table(rules_table)
+            access_rules_table_locker = false
+            break
+        end
+    end
+end
+
+local function remove_rule_exec_obj(index)
+    while true do
+        if access_rule_exec_objs_locker == false then
+            access_rule_exec_objs_locker = true
+            ngx.log(ngx.DEBUG,"remove rule_exec_objs: ", #rule_exec_objs.." - "..index)
+            table.remove(rule_exec_objs, index)
+            access_rule_exec_objs_locker = false
+            break
+        end
+    end
+end
+
+local function exec_rules_in_coroutine()
+    if next(rule_exec_objs) == nil then
+        ngx.log(ngx.INFO,"box has no rules to exec")
+        return false
+    end
+    local has_failed = false
 
     while next(rule_exec_objs) ~= nil do
-        --ngx.log(ngx.DEBUG,"rule_exec_objs cnt: ", #rule_exec_objs)
+        --ngx.log(ngx.DEBUG,"rule exec objs cnt: ", #rule_exec_objs)
         for i=1,#rule_exec_objs do
             if rule_exec_objs[i]["status"] == rule_stop then
                 --取消该策略执行，从执行序列删除
                 ngx.log(ngx.DEBUG,"cancel rule: ", rule_exec_objs[i]["rule"]["rule_uuid"])
                 local coroutinert, cancel_result = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_stop)
                 ngx.log(ngx.DEBUG,"cancel return: ", cancel_result)
-                table.remove(rule_exec_objs, i)
+                remove_rule_exec_obj(i)
                 break
             else
                 --唤醒策略并执行
-                --ngx.log(ngx.DEBUG,"resume rule: ", rule_exec_objs[i]["rule"]["rule_uuid"])
+                --ngx.log(ngx.DEBUG,"resume rule: ", rule_exec_objs[i]["rule"]["rule_uuid"].." - "..i)
                 local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
                 --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
 
                 --唤醒出错
                 if coroutinert == false then
                     ngx.log(ngx.ERR,"resume fail: ", coroutinert, complete)
-                    table.remove(rule_exec_objs, i)
+                    remove_rule_exec_obj(i)
                     break
                 end
 
@@ -375,7 +413,7 @@ local function exec_rules_in_coroutine()
                         has_failed = true
                     end
                     --本条策略已不需要执行，从执行序列删除
-                    table.remove(rule_exec_objs, i)
+                    remove_rule_exec_obj(i)
                     break
                 else
                     --策略组执行未完成
@@ -383,6 +421,11 @@ local function exec_rules_in_coroutine()
                 end
                 ngx.sleep(0.05)
             end
+        end
+        if add_extra_coroutine == true then
+            --在定时器回调所在的上下文加入协程对象
+            create_rule_exec_objs()
+            add_extra_coroutine = false
         end
     end
 
@@ -476,13 +519,6 @@ end
 
 --执行设备某个channel的策略
 function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
-    --检查该设备是否有策略在下发
-    local idle = m_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
-    if idle == false then
-        --忽略
-        return nil
-    end
-
     --选择最优的一条策略
     local ruletable, err = g_sql_app.query_rule_tbl_by_channel(dev_type, dev_id, channel)
     if err then
@@ -514,7 +550,14 @@ function m_exec_rule.exec_rules_by_channel(dev_type, dev_id, channel)
                 ngx.log(ngx.NOTICE,"rule is already running ")
             else
                 --将可执行的策略插入表
-                table.insert(rules_table, rule)
+                while true do
+                    if access_rules_table_locker == false then
+                        access_rules_table_locker = true
+                        table.insert(rules_table, rule)
+                        access_rules_table_locker = false
+                        break
+                    end
+                end
             end
         end
     end
@@ -574,12 +617,19 @@ function m_exec_rule.exec_rules_by_devid(dev_type, dev_id, has_other_dev)
         end
 
         ngx.log(ngx.INFO,"exec rules in device level by coroutine")
+        create_rule_exec_objs()
         has_failed = exec_rules_in_coroutine()
 
         --检查并设置设备为默认状态
         local set_dft_status = g_dev_dft.set_dev_dft(dev_type, dev_id)
         if set_dft_status == false then
             has_failed = true
+        end
+    else
+        --加入执行序列，除了all exec的情况
+        if exec_in_dev_level then
+            ngx.log(ngx.INFO,"just append to rule exec list")
+            add_extra_coroutine = true
         end
     end
     return has_failed
@@ -600,6 +650,23 @@ function m_exec_rule.exec_rules_by_type(dev_type)
         ngx.log(ngx.INFO,"select channel in device: ",dev_id_array[i])
         m_exec_rule.exec_rules_by_devid(dev_type, dev_id_array[i], false)
     end
+end
+
+local function check_device_rule_idle_status()
+	local wait_time = 0
+	while wait_time < 30 do
+        if #rule_exec_objs > 0 then
+            for i,rule_exec_obj in ipairs(rule_exec_objs) do
+                m_exec_rule.stop_device_rule_exec(rule_exec_obj["dev_type"], rule_exec_obj["dev_id"], rule_exec_obj["dev_channel"])
+            end
+        else
+            return true
+        end
+		wait_time = wait_time + 1
+		ngx.sleep(0.1)
+	end
+	ngx.log(ngx.ERR,"cancel rule timeout")
+	return false	
 end
 
 --执行所有类型设备的策略
@@ -637,12 +704,25 @@ function m_exec_rule.exec_all_rules()
     end
 
     --执行所有策略
+    exec_in_dev_level = false
     for i=1,dev_type_cnt do
         --ngx.log(ngx.INFO,"select device in type: ",dev_type_array[i])
         m_exec_rule.exec_rules_by_type(dev_type_array[i])
     end
+    exec_in_dev_level = true
+
+    --检查该设备是否有策略在下发
+    --针对定时器到达引起策略执行时，正在执行增删改引起的策略执行，此时以定时器为最新，取消正在执行的策略
+    local idle = check_device_rule_idle_status()
+    if idle == false then
+        ngx.log(ngx.ERR,"rules exec can not set idle")
+        exec_dev_only = true
+        rule_module_idle = true
+        return true
+    end
 
     ngx.log(ngx.INFO,"exec all rules by coroutine")
+    create_rule_exec_objs()
     local has_failed = exec_rules_in_coroutine()
 
     --检查并设置设备为默认状态
