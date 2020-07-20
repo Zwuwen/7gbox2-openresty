@@ -258,6 +258,7 @@ local function exec_a_method(rule)
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
 
         if msrvcode == nil then
+            --ngx.sleep(10)    --用于测试正在下发策略时有新策略要执行，冲突的情况
             --本条method ResultUpload未收到，继续检查
             local cancel = coroutine.yield(false, false)
             if cancel == rule_stop then
@@ -393,8 +394,20 @@ local function exec_rules_in_coroutine()
             else
                 --唤醒策略并执行
                 --ngx.log(ngx.DEBUG,"resume rule: ", rule_exec_objs[i]["rule"]["rule_uuid"].." - "..i)
-                local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
-                --ngx.log(ngx.DEBUG,"resume return: ", coroutinert, complete, msrvcode)
+                --local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
+                local pstatus, coroutinert, complete, msrvcode = pcall(
+                    function()
+                        local coroutinert, complete, msrvcode = coroutine.resume(rule_exec_objs[i]["coroutine"], rule_exec_objs[i]["rule"])
+                        return coroutinert, complete, msrvcode
+                    end
+                )
+                --ngx.log(ngx.DEBUG,"resume return: ", pstatus, coroutinert, complete, msrvcode)
+                
+                if pstatus == false then
+                    ngx.log(ngx.ERR,"resume fail: ", coroutinert)
+                    remove_rule_exec_obj(i)
+                    break
+                end
 
                 --唤醒出错
                 if coroutinert == false then
