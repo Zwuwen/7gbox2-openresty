@@ -105,17 +105,20 @@ local function update_method(request_body)
 	end
 
 
-	local result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
-	if result[1] ~= nil then
-		if (result[1]["online"] == 0 and json_body["Method"] ~= "CancelLinkageRule") then
-			local res = creat_respone_message(15, "Device offline")
+	local result = nil
+	if json_body["Method"] ~= "CancelLinkageRule" then
+		result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
+		if result[1] ~= nil then
+			if (result[1]["online"] == 0 and json_body["Method"] ~= "CancelLinkageRule") then
+				local res = creat_respone_message(15, "Device offline")
+				result_message_pack(json_body, res)
+				return
+			end
+		else
+			local res = creat_respone_message(1, "Query device status failed")
 			result_message_pack(json_body, res)
 			return
 		end
-	else
-		local res = creat_respone_message(1, "Query device status failed")
-		result_message_pack(json_body, res)
-		return
 	end
 
 
