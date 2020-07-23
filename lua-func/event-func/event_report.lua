@@ -294,6 +294,8 @@ local function time_sort(a,b)
 end
 
 --联动结束
+local ignore_restore_method_table = {"DelProgram", "AddProgram"}
+
 local function linkage_end(body)
     for key,dev_id in pairs(body) do
         local update_json = {}
@@ -307,11 +309,33 @@ local function linkage_end(body)
         for index,value in ipairs(keys) do
             local json_str = g_dev_status.get_real_cmd_data(value)
             local cmd_obj = cjson.decode(json_str)
-            table.insert(dev_cmd_list,cmd_obj)
+            local method = cmd_obj["In"]["Method"]
+            local is_ignore_method = false
+            for k,v in ipairs(ignore_restore_method_table) do
+                if v == method then
+                    is_ignore_method = true
+                    break
+                end
+            end
+            if is_ignore_method == false then
+                table.insert(dev_cmd_list,cmd_obj)
+            end
         end
         --所有方法根据时间戳排序恢复状态
-        table.sort(dev_cmd_list,time_sort)
-        cmd_post(dev_cmd_list)
+        local auto_mode = false
+        local res,err = g_sql_app.query_dev_status_tbl(dev_id)
+        if res then
+            for key, value in ipairs(res) do
+                if 1 == value.auto_mode then
+                    auto_mode = true
+                end
+            end
+        end
+        --如果设备为自动模式，联动恢复时不需要从redis里面恢复，直接调用定时策略恢复即可
+        if auto_mode == false then
+            table.sort(dev_cmd_list,time_sort)
+            cmd_post(dev_cmd_list)
+        end
         --恢复模式
         g_linkage.linkage_start_stop_rule(nil,dev_id,0)
     end
