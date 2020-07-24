@@ -294,7 +294,7 @@ local function time_sort(a,b)
 end
 
 --联动结束
-local ignore_restore_method_table = {"DelProgram", "AddProgram"}
+local ignore_restore_method_table = {"DelProgram", "AddProgram", "Reboot", "ScreenShot"}
 
 local function linkage_end(body)
     for key,dev_id in pairs(body) do
@@ -309,7 +309,7 @@ local function linkage_end(body)
         for index,value in ipairs(keys) do
             local json_str = g_dev_status.get_real_cmd_data(value)
             local cmd_obj = cjson.decode(json_str)
-            local method = cmd_obj["In"]["Method"]
+            local method = cmd_obj["Method"]
             local is_ignore_method = false
             for k,v in ipairs(ignore_restore_method_table) do
                 if v == method then
@@ -334,10 +334,13 @@ local function linkage_end(body)
         --如果设备为自动模式，联动恢复时不需要从redis里面恢复，直接调用定时策略恢复即可
         if auto_mode == false then
             table.sort(dev_cmd_list,time_sort)
+            ngx.log(ngx.INFO,"linkage_end restore to manual, dev_id: ",dev_id)
             cmd_post(dev_cmd_list)
-        end
+        else
         --恢复模式
-        g_linkage.linkage_start_stop_rule(nil,dev_id,0)
+            ngx.log(ngx.INFO,"linkage_end linkage_start_stop_rule, dev_id: ",dev_id)
+            g_linkage.linkage_start_stop_rule(nil,dev_id,0)
+        end
     end
 end
 
