@@ -239,7 +239,7 @@ local function delete_rule(req_payload)
 			end
 			if next(qres) == nil then
 				ngx.log(ngx.INFO,"rule not exist")
-				return "rule not exist", 2
+				--return "rule not exist", 2
 			else
 				ngx.log(ngx.INFO,"delete rule: ", uuid)
 				local res,err = g_sql_app.delete_rule_tbl_by_uuid(uuid)
@@ -266,7 +266,8 @@ local function delete_rule(req_payload)
 		if next(qres) == nil
 		then
 			ngx.log(ngx.INFO,"rule not exist")
-			return "rule not exist", 2
+			--return "rule not exist", 2
+			return "", 0
 		else
 			ngx.log(ngx.INFO,"delete rule: ", payload["DevType"]..", "..payload["DevId"])
 			local res,err = g_sql_app.delete_rule_tbl_by_dev_id(payload["DevType"], payload["DevId"])
@@ -623,7 +624,7 @@ local function delete_rule_group(all_json)
 			end
 			if next(qres) == nil then
 				ngx.log(ngx.INFO,"rule not exist")
-				return "rule not exist", 2
+				--return "rule not exist", 2
 			else
 				--检查该设备是否正在执行策略
 				local desp, status = check_device_rule_idle_status(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
@@ -655,7 +656,7 @@ local function delete_rule_group(all_json)
 		end
 		if next(qres) == nil then
 			ngx.log(ngx.INFO,"rule not exist")
-			return "rule not exist", 2
+			--return "rule not exist", 2
 		else
 			--检查该设备是否正在执行策略
 			local desp, status = check_device_rule_idle_status(payload["DevType"], payload["DevId"], 0)
