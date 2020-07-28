@@ -56,7 +56,6 @@ function event_report_M.thing_online(devices)
                 ngx.log(ngx.ERR,dev_type.."-"..dev_id.." online exec rule success")
                 break
             end
-            ngx.sleep(3)
             rty_cnt = rty_cnt + 1
             ngx.log(ngx.ERR,dev_type.."-"..dev_id.." online exec rule fail")
         end

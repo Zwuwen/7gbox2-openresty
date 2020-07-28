@@ -74,7 +74,17 @@ local function cmd_restore_rule_running(dev_type, dev_id)
     end
     --auto_mode == 1
     --执行设备的策略
-    local has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id, false)
+    local has_failed = false
+    local rty_cnt = 0
+    while rty_cnt < 3 do
+        has_failed = g_exec_rule.exec_rules_by_devid(dev_type, dev_id, false)
+        if has_failed ~= true then
+            --没有失败
+            break
+        end
+        rty_cnt = rty_cnt + 1
+        ngx.log(ngx.ERR,dev_type.."-"..dev_id.." restore automode exec rule fail, retry "..rty_cnt)
+    end
     --更新定时任务间隔
     g_rule_timer.refresh_rule_timer(has_failed)
     return true
