@@ -111,6 +111,7 @@ local function encode_common_dft(dev_type, dev_id, channel, req_data)
 end
 
 local function encode_lamp_dft(dev_type, dev_id, channel)
+    local req_data_list = {}
     local req_data = {}
 
     req_data["method"] = "SetOnOff"
@@ -119,19 +120,29 @@ local function encode_lamp_dft(dev_type, dev_id, channel)
     req_data["rule_param"] = cjson.encode(param)
 
     encode_common_dft(dev_type, dev_id, channel, req_data)
-    return req_data
+    table.insert(req_data_list, req_data)
+    return req_data_list
 end
 
 local function encode_infoscreen_dft(dev_type, dev_id, channel)
-    local req_data = {}
+    local req_data_list = {}
 
+    local req_data = {}
+    req_data["method"] = "StopProgram"
+    local param = {}
+    req_data["rule_param"] = cjson.encode(param)
+    encode_common_dft(dev_type, dev_id, channel, req_data)
+    table.insert(req_data_list, req_data)
+
+    req_data = {}
     req_data["method"] = "SetOnOff"
     local param = {}
     param["OnOff"] = 0
     req_data["rule_param"] = cjson.encode(param)
-
     encode_common_dft(dev_type, dev_id, channel, req_data)
-    return req_data
+    table.insert(req_data_list, req_data)
+
+    return req_data_list
 end
 
 local function encode_ipc_onvif_dft(dev_type, dev_id, channel)
@@ -139,6 +150,7 @@ local function encode_ipc_onvif_dft(dev_type, dev_id, channel)
 end
 
 local function encode_speaker_dft(dev_type, dev_id, channel)
+    local req_data_list = {}
     local req_data = {}
 
     req_data["method"] = "StopProgram"
@@ -146,7 +158,8 @@ local function encode_speaker_dft(dev_type, dev_id, channel)
     req_data["rule_param"] = cjson.encode(param)
 
     encode_common_dft(dev_type, dev_id, channel, req_data)
-    return req_data
+    table.insert(req_data_list, req_data)
+    return req_data_list
 end
 
 --生成默认策略数据
@@ -239,14 +252,22 @@ end
 local function set_channel_dft(dev_type, dev_id, channel)    
     ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.."-"..channel.." to default status")
 
-    local dft_rule = m_dev_dft.encode_device_dft(dev_type, dev_id, channel)
-    if dft_rule == nil then
+    local dft_rules = m_dev_dft.encode_device_dft(dev_type, dev_id, channel)
+    if dft_rules == nil then
         ngx.log(ngx.ERR,"default rule nil")
         return false
     end
 
     insert_dft_table(dev_type, dev_id, channel)
-    local rt_value = exec_dft_request(dft_rule)
+    local rt_value
+    for i,dft_rule in ipairs(dft_rules) do
+        rt_value = exec_dft_request(dft_rule)
+        if rt_value ~= true then
+            --停止执行
+            ngx.log(ngx.ERR,"set device default method group has fail")
+            break
+        end
+    end
     delete_dft_table(dev_type, dev_id, channel)
 
     --设置设备默认状态标志
