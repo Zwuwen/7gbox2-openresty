@@ -197,8 +197,8 @@ local function update_method(request_body)
 				g_platform_linkage_restore_locker = true
 
 				for k,v in ipairs(g_platform_linkage_restore_table) do
-					--如果联动等级小于正在执行的等级，忽略
-					if v[1] == dev_id and level < v[3] then
+					--如果联动等级低于正在执行的等级，忽略
+					if v[1] == dev_id and level > v[3] then
 						local res = creat_respone_message(1, "high level linkage is running")
 						result_message_pack(json_body,res)
 						g_platform_linkage_restore_locker = false
