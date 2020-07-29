@@ -8,6 +8,7 @@ local g_micro = require("cmd-func.cmd_micro")
 local g_event_report = require("event-func.event_report")
 local g_cmd_sync = require("rule-func.cmd_sync")
 local g_http = require("common.http.myhttp_M")
+local g_linkage = require("rule-func.linkage_sync")
 
 local timer_dev_timer_method = {};
 local lamp_timer_method = {"SetOnOff", "SetBrightness"}
@@ -210,6 +211,7 @@ local function update_method(request_body)
 				update_json["linkage_rule"] = 2
 				update_json["online"] = 1
 				g_sql_app.update_dev_status_tbl(dev_id,update_json)
+				g_linkage.linkage_start_stop_rule(nil,dev_id,1)
 				--遍历联动控制的动作列表，下发命令至微服务
 				for k,v in ipairs(control_list) do
 					local request_json = {}
