@@ -12,7 +12,7 @@ local g_linkage = require("rule-func.linkage_sync")
 
 local timer_dev_timer_method = {};
 local lamp_timer_method = {"SetOnOff", "SetBrightness"}
-local info_screen_timer_method = {"SetOnOff", "LoadProgram", "SetBrightness", "SetVolume"}
+local info_screen_timer_method = {"SetOnOff", "PlayProgram", "SetBrightness", "SetVolume"}
 local ipc_onvif_timer_method = {"GotoPreset"}
 local speaker_timer_method = {"PlayProgram"}
 timer_dev_timer_method["Lamp"] = lamp_timer_method
@@ -305,7 +305,12 @@ local function update_method(request_body)
 		--查询是否处于自动或者联动
 		result = g_sql_app.query_dev_status_tbl(json_body["DevId"])
 		if result[1] ~= nil then
-			if (result[1]["auto_mode"] == 0 or is_timer_method(json_body["DevType"], json_body["Method"]) == false) and result[1]["linkage_rule"] == 0 then
+			ngx.log(ngx.DEBUG,"auto_mode: ", result[1]["auto_mode"])
+			ngx.log(ngx.DEBUG,"DevType: ", json_body["DevType"])
+			ngx.log(ngx.DEBUG,"Method: ", json_body["Method"])
+			ngx.log(ngx.DEBUG,"timer method: ", is_timer_method(json_body["DevType"], json_body["Method"]))
+			ngx.log(ngx.DEBUG,"linkage_rule: ", result[1]["linkage_rule"])
+			if json_body["Method"] == "AddProgram" or ((result[1]["auto_mode"] == 0 or is_timer_method(json_body["DevType"], json_body["Method"]) == false) and result[1]["linkage_rule"]) == 0 then
 				--转发命令到微服务
 				local res,status = g_micro.micro_post(json_body["DevType"],request_body)
 				if status == false then
@@ -321,7 +326,13 @@ local function update_method(request_body)
 					end
 				end
 			else
-				local res = creat_respone_message(3, "device is auto mode")
+				local err_msg = ""
+				if result[1]["linkage_rule"] ~= 0 then
+					err_msg = "device is in linkage"
+				else
+					err_msg = "device is auto mode"
+				end
+				local res = creat_respone_message(3, err_msg)
 				result_message_pack(json_body,res)
 			end
 		else
