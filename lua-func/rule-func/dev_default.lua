@@ -261,6 +261,7 @@ local function set_channel_dft(dev_type, dev_id, channel)
             if (msrvcode == 1024) and
                 (desp == "cancel")
             then
+                ngx.log(ngx.DEBUG,"cancel default end")
                 break
             end
 
@@ -276,10 +277,14 @@ local function set_channel_dft(dev_type, dev_id, channel)
     if msrvcode == 0 then
         g_rule_common.set_dev_dft_flag(dev_type, dev_id, 1)
         --上报设置成功状态
-        g_report_event.report_rule_exec_status(dft_rule, "Start", 1, 0, "Success")
+        g_report_event.report_rule_exec_status(dft_rule, "Start", #actions, 0, "Success")
         return true
     else
-        return false
+        if msrvcode == 1024 then
+            return nil
+        else
+            return false
+        end
     end
 end
 
