@@ -107,11 +107,18 @@ local function encode_common_dft(dev_type, dev_id, channel, req_data)
     action["Method"] = req_data["method"]
     action["RuleParam"] = cjson.decode(req_data["rule_param"])
     table.insert (actions, action)
+    if (req_data["method2"] ~= nil) and
+        (req_data["rule_param2"] ~= nil)
+    then
+        action = {}
+        action["Method"] = req_data["method2"]
+        action["RuleParam"] = cjson.decode(req_data["rule_param2"])
+        table.insert (actions, action)
+    end
     req_data["actions"] = cjson.encode(actions)
 end
 
 local function encode_lamp_dft(dev_type, dev_id, channel)
-    local req_data_list = {}
     local req_data = {}
 
     req_data["method"] = "SetOnOff"
@@ -120,29 +127,23 @@ local function encode_lamp_dft(dev_type, dev_id, channel)
     req_data["rule_param"] = cjson.encode(param)
 
     encode_common_dft(dev_type, dev_id, channel, req_data)
-    table.insert(req_data_list, req_data)
-    return req_data_list
+    return req_data
 end
 
 local function encode_infoscreen_dft(dev_type, dev_id, channel)
-    local req_data_list = {}
-
     local req_data = {}
+
     req_data["method"] = "StopProgram"
     local param = {}
     req_data["rule_param"] = cjson.encode(param)
-    encode_common_dft(dev_type, dev_id, channel, req_data)
-    table.insert(req_data_list, req_data)
 
-    req_data = {}
-    req_data["method"] = "SetOnOff"
+    req_data["method2"] = "SetOnOff"
     local param = {}
     param["OnOff"] = 0
-    req_data["rule_param"] = cjson.encode(param)
-    encode_common_dft(dev_type, dev_id, channel, req_data)
-    table.insert(req_data_list, req_data)
+    req_data["rule_param2"] = cjson.encode(param)
 
-    return req_data_list
+    encode_common_dft(dev_type, dev_id, channel, req_data)
+    return req_data
 end
 
 local function encode_ipc_onvif_dft(dev_type, dev_id, channel)
@@ -150,7 +151,6 @@ local function encode_ipc_onvif_dft(dev_type, dev_id, channel)
 end
 
 local function encode_speaker_dft(dev_type, dev_id, channel)
-    local req_data_list = {}
     local req_data = {}
 
     req_data["method"] = "StopProgram"
@@ -158,8 +158,7 @@ local function encode_speaker_dft(dev_type, dev_id, channel)
     req_data["rule_param"] = cjson.encode(param)
 
     encode_common_dft(dev_type, dev_id, channel, req_data)
-    table.insert(req_data_list, req_data)
-    return req_data_list
+    return req_data
 end
 
 --生成默认策略数据
@@ -186,14 +185,14 @@ end
 --rt true: 设置成功
 --rt false: 设置失败
 local function exec_dft_request(req_data)
-    local rt_value = false
+    local msrvcode, desp
     --生成微服务报文
     local http_param_table = g_rule_common.encode_http_downstream_param(req_data)
     --请求微服务
     local rt = g_rule_common.exec_http_request(http_param_table)
     if rt == false then
         ngx.log(ngx.ERR,"request http fail ")
-        return false
+        return 11, "request http fail"
     end
 
     --插入redis
@@ -204,21 +203,12 @@ local function exec_dft_request(req_data)
     while wait_time < 200 do
         ngx.sleep(0.1)
         --ngx.log(ngx.DEBUG,"check rule result-upload: ", req_data["rule_uuid"].."  "..http_param_table["MsgId"])
-        local msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
+        msrvcode, desp = g_tstatus.check_result_upload(http_param_table["MsgId"])
         --ngx.log(ngx.DEBUG,"check "..http_param_table["MsgId"]..": ", msrvcode, desp)
         --msrvcode = 1  --测试用
 
         if msrvcode ~= nil then
             --收到，返回结果
-            if msrvcode == 0 then
-                rt_value = true
-                --上报设置成功状态
-                g_report_event.report_rule_exec_status(req_data, "Start", 1, 0, "Success")
-            else
-                rt_value = false
-                --上报设置失败状态
-                g_report_event.report_rule_exec_status(req_data, "Start", 1, msrvcode, desp)
-            end
             break
         end
 
@@ -226,7 +216,8 @@ local function exec_dft_request(req_data)
         local cancel = m_dev_dft.get_device_dft_cancel_status(req_data["dev_type"], req_data["dev_id"], req_data["dev_channel"])
         if cancel == true then
             ngx.log(ngx.DEBUG,"cancel "..req_data["dev_type"].."-"..req_data["dev_id"].."-"..req_data["dev_channel"].." default")
-            rt_value = nil
+            msrvcode = 1024
+            desp = "cancel"
             break
         end
 
@@ -237,14 +228,14 @@ local function exec_dft_request(req_data)
     if wait_time >= 200 then
         --超时
         ngx.log(ngx.ERR,"set default timeout")
-        rt_value = false
-        g_report_event.report_rule_exec_status(req_data, "Start", 1, 4, "Timeout")
+        msrvcode = 4
+        desp = "Timeout"
     end
 
     --删除redis
     g_tstatus.del(http_param_table["MsgId"])
 
-    return rt_value
+    return msrvcode, desp
 end
 
 --rt true: 设置成功
@@ -252,30 +243,44 @@ end
 local function set_channel_dft(dev_type, dev_id, channel)    
     ngx.log(ngx.INFO,"set "..dev_type.."-"..dev_id.."-"..channel.." to default status")
 
-    local dft_rules = m_dev_dft.encode_device_dft(dev_type, dev_id, channel)
-    if dft_rules == nil then
+    local dft_rule = m_dev_dft.encode_device_dft(dev_type, dev_id, channel)
+    if dft_rule == nil then
         ngx.log(ngx.ERR,"default rule nil")
         return false
     end
 
     insert_dft_table(dev_type, dev_id, channel)
-    local rt_value
-    for i,dft_rule in ipairs(dft_rules) do
-        rt_value = exec_dft_request(dft_rule)
-        if rt_value ~= true then
-            --停止执行
+    local msrvcode, desp
+    local actions = cjson.decode(dft_rule["actions"])
+    for i,action in ipairs(actions) do
+        dft_rule["method"] = action["Method"]
+        dft_rule["rule_param"] = cjson.encode(action["RuleParam"])
+        ngx.log(ngx.INFO,"exec ", dft_rule["dev_type"].." : "..dft_rule["method"])
+        msrvcode, desp = exec_dft_request(dft_rule)
+        if msrvcode ~= 0 then
+            if (msrvcode == 1024) and
+                (desp == "cancel")
+            then
+                break
+            end
+
+            --停止执行，上报设置失败状态
             ngx.log(ngx.ERR,"set device default method group has fail")
+            g_report_event.report_rule_exec_status(dft_rule, "Start", i, msrvcode, desp)
             break
         end
     end
     delete_dft_table(dev_type, dev_id, channel)
 
     --设置设备默认状态标志
-    if rt_value == true then
+    if msrvcode == 0 then
         g_rule_common.set_dev_dft_flag(dev_type, dev_id, 1)
+        --上报设置成功状态
+        g_report_event.report_rule_exec_status(dft_rule, "Start", 1, 0, "Success")
+        return true
+    else
+        return false
     end
-
-    return rt_value
 end
 
 --rt true: 设置成功或不需要设置
