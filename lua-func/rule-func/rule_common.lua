@@ -145,23 +145,29 @@ function m_rule_common.get_next_loop_interval()
         local end_interval   = 0
 
         if (next(stime_table) ~= nil) then
-            local sql_ssec = string.format("select extract(epoch from ((current_time(0) - \'%s\')::time))", stime_table[1]["start_time"])
+            local sql_ssec = string.format("select extract(epoch from (\'%s\' - current_time(0)::time))", stime_table[1]["start_time"])
             local stime,err = g_sql_app.query_table(sql_ssec)
             if err then
                 ngx.log(ngx.ERR," ", err)
                 return nil,false
             end
-            start_interval = hours24 - stime[1]["date_part"]
+            start_interval = stime[1]["date_part"]
+            if start_interval < 0 then
+                start_interval = 0
+            end
         end
 
         if (next(etime_table) ~= nil) then
-            local sql_esec = string.format("select extract(epoch from ((current_time(0) - \'%s\')::time))", etime_table[1]["end_time"])
+            local sql_esec = string.format("select extract(epoch from (\'%s\' - current_time(0)::time))", etime_table[1]["end_time"])
             local etime,err = g_sql_app.query_table(sql_esec)
             if err then
                 ngx.log(ngx.ERR," ", err)
                 return nil,false
             end
-            end_interval   = hours24 - etime[1]["date_part"]
+            end_interval   = etime[1]["date_part"]
+            if end_interval < 0 then
+                end_interval = 0
+            end
         end
 
         if (next(etime_table) == nil) then
@@ -184,14 +190,14 @@ function m_rule_common.get_next_loop_interval()
         end
         if (next(rule_table) ~= nil) then
             --日期内有策略，但在次日
-            local sql_sec = string.format("select extract(epoch from ((current_time(0) - '24:00:00')::time))")
+            local sql_sec = string.format("select extract(epoch from ('24:00:00' - current_time(0)::time))")
             local time,err = g_sql_app.query_table(sql_sec)
             if err then
                 ngx.log(ngx.ERR," ", err)
                 return nil,false
             end
             
-            interval = hours24 - time[1]["date_part"]
+            interval = time[1]["date_part"]
         else
             --日期内无策略
             return nil, true
