@@ -295,7 +295,7 @@ end
 --联动结束
 local ignore_restore_method_table = {"DelProgram", "AddProgram", "Reboot", "ScreenShot"}
 
-local function linkage_end(body)
+function event_report_M.linkage_end(body)
     for key,dev_id in pairs(body) do
         local update_json = {}
         update_json["linkage_rule"] = 0
@@ -351,7 +351,7 @@ function event_report_M.linkage_event(body)
         linkage_start(out)
     elseif status == "End" then
         local out = playload["Out"]
-        linkage_end(out)
+        event_report_M.linkage_end(out)
     end
     playload["Out"] = nil
     body["Payload"] = playload

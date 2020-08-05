@@ -281,7 +281,7 @@ function m_rule_common.check_dev_status(dev_type, dev_id, attr)
     elseif attr == "linkage" then
         --判断设备是否有联动在执行
         --ngx.log(ngx.INFO,"check linkage_run: ", linkage_run)
-        if linkage_run == 1 then
+        if linkage_run ~= 0 then
             ngx.log(ngx.INFO,"linkage is running")
             return true     --有联动在执行        
         else
