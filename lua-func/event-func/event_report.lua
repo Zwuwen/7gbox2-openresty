@@ -293,7 +293,9 @@ local function time_sort(a,b)
 end
 
 --联动结束
-local ignore_restore_method_table = {"DelProgram", "AddProgram", "Reboot", "ScreenShot"}
+local ignore_restore_method_table = {"DelProgram", "AddProgram", "Reboot", "ScreenShot", "ClearAllPreset", "GetPresets",
+"SetFocus", "MovePtz", "RemovePreset", "SetZoom", "Snapshot", "GetVideoStream", "SetPreset", "StopPtz", "SetAlarm",
+"Reboot", "GetInfo", "GetOnOff"}
 
 function event_report_M.linkage_end(body)
     for key,dev_id in pairs(body) do

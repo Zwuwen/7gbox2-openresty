@@ -28,6 +28,10 @@ local function delete_method()
     
 end
 
+local function linkage_event_handle(premature, data)
+    g_event_report.linkage_event(data)
+end
+
 -------------post method---------
 local function post_method(request_body)
     local body = cjson.decode(request_body)
@@ -45,7 +49,7 @@ local function post_method(request_body)
         g_event_report.method_respone(body)
     elseif body["Event"] == "LinkageRuleStatus" then
         --联动事件
-        g_event_report.linkage_event(body)
+        ngx.timer.at(0, linkage_event_handle, body)
     elseif body["Event"] == "PlatStatus" then
         --平台上线下线事件
         g_event_report.platform_online_event(body)
