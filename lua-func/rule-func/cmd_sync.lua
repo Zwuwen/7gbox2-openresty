@@ -43,6 +43,16 @@ local function cmd_stop_rule_running(dev_type, dev_id)
     end
     --auto_mode == 0
     --策略
+    --取消正在下发的策略及默认执行
+    local channel_cnt = g_rule_common.get_dev_channel_cnt(dev_type, dev_id)
+    if channel_cnt == nil then
+        ngx.log(ngx.ERR,"query dev_channel cnt err")
+        return false
+    end
+    for i=1,channel_cnt do
+        g_exec_rule.check_device_rule_idle_status(dev_type, dev_id, i)
+    end
+
     --上报策略结束
     g_exec_rule.report_dev_end_status(dev_type, dev_id)
 

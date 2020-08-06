@@ -70,6 +70,37 @@ function m_exec_rule.stop_device_rule_exec(dev_type, dev_id, channel)
     end 
 end
 
+--检测并取消正在下发的策略
+function m_exec_rule.check_device_rule_idle_status(dev_type, dev_id, channel)
+	local wait_time = 0
+	while wait_time < 30 do
+		--策略下发
+		local exec_idle = m_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
+		if exec_idle == false then
+			m_exec_rule.stop_device_rule_exec(dev_type, dev_id, channel)
+		end
+		--检查默认状态设置
+		local dft_idle = g_dev_dft.get_device_dft_idle_status(dev_type, dev_id, channel)
+		if dft_idle == false then
+			g_dev_dft.stop_device_dft_exec(dev_type, dev_id, channel)
+		end
+
+		if (exec_idle == true) and
+			(dft_idle == true)
+		then
+			return "", 0
+		end
+		wait_time = wait_time + 1
+		ngx.sleep(0.1)
+	end
+
+	if wait_time >= 30 then
+		--超时
+		ngx.log(ngx.ERR,"cancel rule timeout")
+		return "device busy", 13
+	end
+end
+
 local function dump_rule(rule_obj)
     ngx.log(ngx.INFO ,"rule_uuid  : ",rule_obj["rule_uuid"])
     ngx.log(ngx.INFO ,"dev_type   : ",rule_obj["dev_type"])
@@ -665,7 +696,7 @@ function m_exec_rule.exec_rules_by_type(dev_type)
     end
 end
 
-local function check_device_rule_idle_status()
+local function set_device_rule_idle()
 	local wait_time = 0
 	while wait_time < 30 do
         if #rule_exec_objs > 0 then
@@ -726,7 +757,7 @@ function m_exec_rule.exec_all_rules()
 
     --检查该设备是否有策略在下发
     --针对定时器到达引起策略执行时，正在执行增删改引起的策略执行，此时以定时器为最新，取消正在执行的策略
-    local idle = check_device_rule_idle_status()
+    local idle = set_device_rule_idle()
     if idle == false then
         ngx.log(ngx.ERR,"rules exec can not set idle")
         exec_dev_only = true

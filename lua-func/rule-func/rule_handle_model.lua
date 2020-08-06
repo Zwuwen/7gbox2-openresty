@@ -436,37 +436,6 @@ end
 ---------------------------------------------------------------------------------
 --增删改查方法封装
 ---------------------------------------------------------------------------------
---检测并取消正在下发的策略
-local function check_device_rule_idle_status(dev_type, dev_id, channel)
-	local wait_time = 0
-	while wait_time < 30 do
-		--策略下发
-		local exec_idle = g_exec_rule.get_device_rule_idle_status(dev_type, dev_id, channel)
-		if exec_idle == false then
-			g_exec_rule.stop_device_rule_exec(dev_type, dev_id, channel)
-		end
-		--检查默认状态设置
-		local dft_idle = g_dev_dft.get_device_dft_idle_status(dev_type, dev_id, channel)
-		if dft_idle == false then
-			g_dev_dft.stop_device_dft_exec(dev_type, dev_id, channel)
-		end
-
-		if (exec_idle == true) and
-			(dft_idle == true)
-		then
-			return "", 0
-		end
-		wait_time = wait_time + 1
-		ngx.sleep(0.1)
-	end
-
-	if wait_time >= 30 then
-		--超时
-		ngx.log(ngx.ERR,"cancel rule timeout")
-		return "device busy", 13
-	end
-end
-
 --插入策略组
 local function create_rule_group(all_json)
 	local all_table = cjson.decode(all_json)
@@ -562,7 +531,7 @@ local function create_rule_group(all_json)
 		end
 
 		--检查该设备是否正在执行策略
-		local desp, status = check_device_rule_idle_status(rule_obj["DevType"], rule_obj["DevId"], rule_obj["DevChannel"])
+		local desp, status = g_exec_rule.check_device_rule_idle_status(rule_obj["DevType"], rule_obj["DevId"], rule_obj["DevChannel"])
 		if status ~= 0 then
 			return desp, status
 		end
@@ -627,7 +596,7 @@ local function delete_rule_group(all_json)
 				--return "rule not exist", 2
 			else
 				--检查该设备是否正在执行策略
-				local desp, status = check_device_rule_idle_status(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
+				local desp, status = g_exec_rule.check_device_rule_idle_status(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
 				if status ~= 0 then
 					return desp, status
 				end
@@ -659,7 +628,7 @@ local function delete_rule_group(all_json)
 			--return "rule not exist", 2
 		else
 			--检查该设备是否正在执行策略
-			local desp, status = check_device_rule_idle_status(payload["DevType"], payload["DevId"], 0)
+			local desp, status = g_exec_rule.check_device_rule_idle_status(payload["DevType"], payload["DevId"], 0)
 			if status ~= 0 then
 				return desp, status
 			end
@@ -755,7 +724,7 @@ local function update_rule_group(all_json)
 			return "rule not exist", 2
 		else
 			--检查该设备是否正在执行策略
-			local desp, status = check_device_rule_idle_status(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
+			local desp, status = g_exec_rule.check_device_rule_idle_status(qres[1]["dev_type"], qres[1]["dev_id"], qres[1]["dev_channel"])
 			if status ~= 0 then
 				return desp, status
 			end
