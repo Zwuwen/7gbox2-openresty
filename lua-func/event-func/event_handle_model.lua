@@ -32,15 +32,23 @@ local function linkage_event_handle(premature, data)
     g_event_report.linkage_event(data)
 end
 
+local function thing_online_handle(premature, data)
+    g_event_report.thing_online(data)
+end
+
+local function thing_offline_handle(premature, data)
+    g_event_report.thing_offline(data)
+end
+
 -------------post method---------
 local function post_method(request_body)
     local body = cjson.decode(request_body)
     if body["Event"] == "ThingsOnline" then
         --设备上线事件
-        g_event_report.thing_online(body["Devices"])
+        ngx.timer.at(0, thing_online_handle, body["Devices"])
     elseif body["Event"] == "ThingsOffline" then
         --设备下线事件
-        g_event_report.thing_offline(body["Devices"])
+        ngx.timer.at(0, thing_offline_handle, body["Devices"])
     elseif body["Event"] == "StatusUpload" then
         --设备属性改变
         g_event_report.attribute_change(body)
