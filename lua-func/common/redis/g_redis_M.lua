@@ -11,9 +11,10 @@ function g_redis_M.open_db(red)
     red:set_timeout(redis_conf.timeout)
     local ok,err = red:connect(redis_conf.host,redis_conf.port)
     if not ok then
-        ngx.log(ngx.ERR,"connect redis db fail")
+        ngx.log(ngx.ERR,"connect redis db fail, err: ", err)
         return nil
     end
+    red:set_keepalive(10000, 100)
     --ngx.log(ngx.ERR,"connect redis db success!")
     return red
 end
