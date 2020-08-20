@@ -14,7 +14,6 @@ function g_redis_M.open_db(red)
         ngx.log(ngx.ERR,"connect redis db fail, err: ", err)
         return nil
     end
-    red:set_keepalive(10000, 100)
     --ngx.log(ngx.ERR,"connect redis db success!")
     return red
 end
