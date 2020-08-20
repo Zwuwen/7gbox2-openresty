@@ -189,7 +189,13 @@ local function remove_table(base, remove)
     return new_table
 end
 
-function event_report_M.method_respone_handle()
+local function method_respone_handle_err(err)
+    ngx.log(ngx.ERR,"method_respone_handle_err ERR: ", err)
+    g_is_result_upload_timer_running = false
+    g_result_upload_msg_table_locker = false
+end
+
+local function method_respone_handle_fun()
     if g_is_result_upload_timer_running == false then
         g_is_result_upload_timer_running = true
         --ngx.log(ngx.DEBUG,"method_respone_handle in, g_result_upload_msg_table size is ", table.maxn(g_result_upload_msg_table))
@@ -238,6 +244,9 @@ function event_report_M.method_respone_handle()
     end
 end
 
+function event_report_M.method_respone_handle()
+    xpcall(method_respone_handle_fun, method_respone_handle_err)
+end
 -------------------------操作回复事件---------------------------------
 function event_report_M.method_respone(body)
     local gw, res = g_sql_app.query_dev_info_tbl(0)
