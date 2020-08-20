@@ -769,13 +769,15 @@ function m_exec_rule.exec_all_rules()
     create_rule_exec_objs()
     local has_failed = exec_rules_in_coroutine()
 
+    --协程内策略下发完成后立即恢复，在设置默认后会使时序出错
+    exec_dev_only = true
+
     --检查并设置设备为默认状态
     local set_dft_status = g_dev_dft.set_all_dev_dft()
     if set_dft_status == false then
         has_failed = true
     end
 
-    exec_dev_only = true
     rule_module_idle = true
 
     return has_failed
