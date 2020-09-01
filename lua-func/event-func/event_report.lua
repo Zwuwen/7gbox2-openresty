@@ -168,8 +168,17 @@ function event_report_M.attribute_change(body)
     else
         body["GW"] = ""
     end
-    event_send_message(event_conf.url,cjson.encode(body))
-    rule_engine_trigger(body)
+    --如果是第一条报警则先触发规则
+    if body["Phase"] == 0 then
+        --删除这个key
+        body["Phase"] = nil
+        rule_engine_trigger(body)
+        --如果是第二条报警则只上报平台
+    elseif body[Phase] == 1 then
+        --删除这个key
+        body["Phase"] = nil
+        event_send_message(event_conf.url,cjson.encode(body))
+    end
 end
 
 local function remove_table(base, remove)
