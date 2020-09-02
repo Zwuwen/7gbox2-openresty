@@ -62,7 +62,7 @@ local function post_method(request_body)
         --平台上线下线事件
         g_event_report.platform_online_event(body)
     elseif body["Event"] == "Alarm" then
-        --AI事件
+        --告警
         g_event_report.attribute_change(body)
     elseif body["Event"] == "TimerRuleStatus" then
         --时间策略执行状态
