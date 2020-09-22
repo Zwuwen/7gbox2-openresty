@@ -24,6 +24,7 @@ local m_cmd_handle = {}
 local g_cmd_handle_body_table = {}
 local g_is_cmd_handle_timer_running = false
 local g_cmd_handle_body_table_locker = false
+local g_cmd_handle_timer_count = 0
 
 local g_platform_linkage_restore_table = {}
 local g_is_platform_linkage_restore_timer_running = false
@@ -344,6 +345,7 @@ local function update_method(request_body)
 end
 
 function m_cmd_handle.add_handle(request_method, request_body)
+	ngx.log(ngx.DEBUG,"m_cmd_handle add_handle, request body: ", request_body)
 	local request_table = {request_method, request_body}
 	while true do
 		if not g_cmd_handle_body_table_locker then
@@ -360,6 +362,12 @@ end
 function m_cmd_handle.cmd_handle_thread()
 	if g_is_cmd_handle_timer_running == false then
 		g_is_cmd_handle_timer_running = true
+		g_cmd_handle_timer_count = g_cmd_handle_timer_count + 1
+		---log every about 1 minute
+		if g_cmd_handle_timer_count == 120 then
+			g_cmd_handle_timer_count = 0
+			ngx.log(ngx.DEBUG,"cmd_handle_thread is alive!")
+		end
 		local want_remove = {}
 		for k, v in ipairs(g_cmd_handle_body_table) do
 			local request_method = v[1]
