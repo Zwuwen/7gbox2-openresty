@@ -101,8 +101,10 @@ local function is_timer_method(dev_type, method_name)
 end
 
 local function linkage_restore_timer_body()
+	ngx.log(ngx.INFO,"linkage_restore_timer_body in")
 	if g_is_platform_linkage_restore_timer_running == false then
 		g_is_platform_linkage_restore_timer_running = true
+		ngx.log(ngx.INFO,"linkage_restore_timer_body run")
 		local want_remove = {}
 		for k,v in ipairs(g_platform_linkage_restore_table) do
 			ngx.update_time()
@@ -126,6 +128,8 @@ local function linkage_restore_timer_body()
 				end
 				
 				if next(g_platform_linkage_restore_table) ~= nil then
+					g_platform_linkage_restore_locker = false
+					g_is_platform_linkage_restore_timer_running = false
 					ngx.timer.at(1, linkage_restore_timer_body)
 					ngx.log(ngx.INFO,"start new timer")
 				else
@@ -138,7 +142,7 @@ local function linkage_restore_timer_body()
 				ngx.sleep(0.01)
 			end
 		end
-
+		ngx.log(ngx.INFO,"linkage_restore_timer_body out")
 		g_is_platform_linkage_restore_timer_running = false
 	end
 end
