@@ -48,7 +48,6 @@ function time_rule_status.query(msgid)
             end
         end  
     else
-        res = {}
         return res, cmd_status[5] 
     end  
 end
@@ -84,7 +83,7 @@ function time_rule_status.check_result_upload(msg_id)
     local result, cmd_status = time_rule_status.query(msg_id)
     --ngx.log(ngx.DEBUG,"query redis: ", result, cmd_status)
     if result == nil then
-        return nil
+        return nil, ""
     end
 
     local result_table = cjson.decode(result)
